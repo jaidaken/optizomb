@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build from pure vanilla + only our new optizomb/ classes
-# No patches applied to any vanilla file — isolates whether the bug
+# No patches applied to any vanilla file - isolates whether the bug
 # is in old patches or our new code
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,4 +46,4 @@ javac \
 CLASS_COUNT=$(find "$BUILD_DIR/classes" -name "*.class" 2>/dev/null | wc -l)
 echo ""
 echo "=== Clean Test Build Complete ==="
-echo "Classes: $CLASS_COUNT (optizomb only — rest comes from vanilla JAR)"
+echo "Classes: $CLASS_COUNT (optizomb only - rest comes from vanilla JAR)"

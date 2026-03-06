@@ -90,17 +90,17 @@ public final class OptiZombGLChars {
                 confirmed = true;
                 DebugLog.General.println("[OptiZomb] GL_CHARS active: client attrib eliminated, server attrib narrowed to 0x100");
             }
-            // No glPushClientAttrib — tracked by VertexBufferObject.restoreClientState()
+            // No glPushClientAttrib - tracked by VertexBufferObject.restoreClientState()
             GL11.glPushAttrib(0x100);        // GL_DEPTH_BUFFER_BIT only (was 0xFFFFF = all)
             GL11.glEnable(3042);             // GL_BLEND
             GL11.glBlendFunc(770, 771);      // SRC_ALPHA, ONE_MINUS_SRC_ALPHA
             GL11.glEnable(3008);             // GL_ALPHA_TEST
             GL11.glAlphaFunc(516, 0.01F);    // GL_GREATER, 0.01 (tighter than vanilla 0.0)
             GL11.glEnable(2929);             // GL_DEPTH_TEST
-            GL11.glDepthFunc(513);           // GL_LESS — hoisted from per-DrawChar
+            GL11.glDepthFunc(513);           // GL_LESS - hoisted from per-DrawChar
             GL11.glDisable(3089);            // GL_SCISSOR_TEST off
-            GL11.glEnable(2884);             // GL_CULL_FACE — hoisted from per-DrawChar
-            GL11.glCullFace(1028);           // GL_BACK — hoisted from per-DrawChar
+            GL11.glEnable(2884);             // GL_CULL_FACE - hoisted from per-DrawChar
+            GL11.glCullFace(1028);           // GL_BACK - hoisted from per-DrawChar
         } else {
             GL11.glPushClientAttrib(-1);
             GL11.glPushAttrib(1048575);

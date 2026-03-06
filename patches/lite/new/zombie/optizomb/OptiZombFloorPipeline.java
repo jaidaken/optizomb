@@ -29,7 +29,7 @@ import zombie.iso.sprite.shapers.FloorShaperDiamond;
  * Sub-optimizations:
  *   20a: Hoist frame-invariant values out of per-square loop
  *   20b: Cache building occlusion result per-square per-frame
- *   20c: Strip profiler wrapper — call renderFloorInternal directly
+ *   20c: Strip profiler wrapper - call renderFloorInternal directly
  *   20d: Cache static bucket bits in byte bitmask on IsoGridSquare
  *   20e: One StartShader/EndShader pair per z-layer instead of per-tile
  *   20f: Cache floorLayer uniform location (bypass per-tile HashMap lookup)
@@ -38,7 +38,7 @@ import zombie.iso.sprite.shapers.FloorShaperDiamond;
  */
 public final class OptiZombFloorPipeline {
 
-    // Diagnostics — counters
+    // Diagnostics - counters
     private static long lastReportTime = 0;
     private static int frameCount = 0;
     private static int layerCount = 0;
@@ -46,7 +46,7 @@ public final class OptiZombFloorPipeline {
     private static int attachedSprites = 0;
     private static int mainSpriteSkips = 0;
 
-    // Diagnostics — per-layer timing (nanos accumulated across frames)
+    // Diagnostics - per-layer timing (nanos accumulated across frames)
     private static long renderLoopNs = 0;
     private static long fboCheckNs = 0;
     private static long envNs = 0;

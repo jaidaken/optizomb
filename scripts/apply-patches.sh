@@ -8,7 +8,7 @@ SRC_DIR="$PROJECT_DIR/src"
 
 TIER="${1:-lite}"
 
-echo "=== OptiZomb — Apply Patches ($TIER tier) ==="
+echo "=== OptiZomb - Apply Patches ($TIER tier) ==="
 
 if [ ! -d "$VANILLA_DIR/zombie" ]; then
     echo "ERROR: Vanilla source not found at $VANILLA_DIR"

@@ -117,7 +117,7 @@ public final class OptiZombBoneTBO {
         int dstIdx = writeCursor * FLOATS_PER_VEC4;
 
         // Store bone data as-is (row-major, same layout as Matrix4f.store()).
-        // The shader transposes when reading — same as glUniformMatrix4fv(transpose=true).
+        // The shader transposes when reading - same as glUniformMatrix4fv(transpose=true).
         int srcPos = matrixPalette.position();
         matrixPalette.position(srcPos);
         matrixPalette.get(stagingArray, dstIdx, boneCount * 16);

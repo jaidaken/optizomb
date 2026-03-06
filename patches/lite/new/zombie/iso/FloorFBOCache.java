@@ -8,14 +8,14 @@ import zombie.core.textures.TextureDraw;
 import zombie.core.textures.TextureFBO;
 
 /**
- * Floor FBO Cache — caches rendered floor tiles in offscreen textures.
+ * Floor FBO Cache - caches rendered floor tiles in offscreen textures.
  *
  * Three frame modes:
- *   BYPASS  — dirty frame, render tiles normally with zero FBO overhead
- *   CAPTURE — first clean frame after dirty, render tiles into FBO for future use
- *   BLIT    — subsequent clean frames, skip tile rendering entirely and blit cached FBO
+ *   BYPASS  - dirty frame, render tiles normally with zero FBO overhead
+ *   CAPTURE - first clean frame after dirty, render tiles into FBO for future use
+ *   BLIT    - subsequent clean frames, skip tile rendering entirely and blit cached FBO
  *
- * During movement (driving, walking), every frame is BYPASS — zero overhead.
+ * During movement (driving, walking), every frame is BYPASS - zero overhead.
  * When the player stops, one CAPTURE frame runs, then BLIT saves work until they move again.
  *
  * FBO dimensions use IsoCamera.frameState offscreen dimensions (not screen size).
@@ -28,7 +28,7 @@ public class FloorFBOCache {
     public static final int CAPTURE = 1;
     public static final int BLIT = 2;
 
-    // FBO resources — one FBO, texture swapped per layer
+    // FBO resources - one FBO, texture swapped per layer
     private TextureFBO fbo;
     private final Texture[] layerTextures = new Texture[MAX_LAYERS];
     private int fboWidth, fboHeight;
@@ -62,7 +62,7 @@ public class FloorFBOCache {
     @SuppressWarnings("unchecked")
     private final ArrayList<IsoGridSquare>[] cachedShadowSquares = new ArrayList[MAX_LAYERS];
 
-    // Two minimal GenericDrawers — just FBO bind/unbind, no blend state changes
+    // Two minimal GenericDrawers - just FBO bind/unbind, no blend state changes
     private final CaptureBeginDrawer captureBeginDrawer = new CaptureBeginDrawer();
     private final CaptureEndDrawer captureEndDrawer = new CaptureEndDrawer();
 
@@ -154,7 +154,7 @@ public class FloorFBOCache {
 
     /**
      * Update cached comparison state. Call after every BYPASS and CAPTURE frame
-     * (not BLIT — nothing changed on BLIT frames).
+     * (not BLIT - nothing changed on BLIT frames).
      */
     public void updateCachedState(int layerCount, int playerIndex) {
         IsoCamera.FrameState fs = IsoCamera.frameState;

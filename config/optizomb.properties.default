@@ -1,4 +1,4 @@
-# OptiZomb Lite v0.1 — Feature Flags
+# OptiZomb Lite v0.1 - Feature Flags
 # Set any option to false to disable that optimization group.
 # Dependencies: opt.glchars requires opt.glfix, opt.bonetbo requires opt.glchars.
 

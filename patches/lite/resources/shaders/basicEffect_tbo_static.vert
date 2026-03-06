@@ -1,6 +1,6 @@
 #version 430 compatibility
 
-// Static variant of basicEffect_tbo — uses transform matrix instead of bone SSBO.
+// Static variant of basicEffect_tbo - uses transform matrix instead of bone SSBO.
 
 out vec3 vertColour;
 out vec3 vertNormal;

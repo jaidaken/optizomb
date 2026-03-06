@@ -13,7 +13,7 @@ import zombie.debug.DebugLog;
  * CPU timing still reveals driver overhead, stalls, and relative phase costs.
  */
 public final class OptiZombGPUProfiler {
-    // Phase names — add new phases here
+    // Phase names - add new phases here
     public static final int PHASE_WORLD_RENDER = 0;
     public static final int PHASE_DEAD_BODY_ATLAS = 1;
     public static final int PHASE_WORLD_ITEM_ATLAS = 2;

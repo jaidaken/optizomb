@@ -157,7 +157,7 @@
 -                        int4 |= 16;
 -                        if (square0.HasStairs()) {
 -                            int4 |= 4;
-+            // Opt 21: FBO clean frame — blit cached texture + restore bucket lists
++            // Opt 21: FBO clean frame - blit cached texture + restore bucket lists
 +            if (_fboClean && _fboCache != null) {
 +                _fboCache.blitCached(int0);
 +                _fboCache.restoreBuckets(int0, SolidFloor, ShadedFloor, VegetationCorpses, MinusFloorCharacters, ShadowSquares);

@@ -193,7 +193,7 @@ public final class OptiZombBlood {
                     inf.b *= cachedLightB;
                 }
 
-                // Phase D: Direct SpriteRenderer call — bypasses redundant
+                // Phase D: Direct SpriteRenderer call - bypasses redundant
                 // XToScreen/YToScreen, offscreen check, and 3 method dispatches
                 SpriteRenderer.instance.render(
                     bloodTex,

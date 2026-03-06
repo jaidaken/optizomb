@@ -12,7 +12,7 @@ TIER="${1:-lite}"
 
 VERSION=$(cat "$PROJECT_DIR/version.txt" | tr -d '[:space:]')
 
-echo "=== OptiZomb Build — $TIER tier (v$VERSION) ==="
+echo "=== OptiZomb Build - $TIER tier (v$VERSION) ==="
 
 # Inject version into OptiZombConfig.java (src/ is gitignored, safe to modify)
 CONFIG_FILE="$SRC_DIR/zombie/optizomb/OptiZombConfig.java"

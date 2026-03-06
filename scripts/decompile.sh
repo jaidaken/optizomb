@@ -11,7 +11,7 @@ LIBS_DIR="$PROJECT_DIR/libs"
 # Game installation path
 PZ_GAME_DIR="/mnt/data/SteamLibrary/steamapps/common/ProjectZomboid/projectzomboid"
 
-echo "=== OptiZomb — Decompile Vanilla ==="
+echo "=== OptiZomb - Decompile Vanilla ==="
 echo "Game:   $PZ_GAME_DIR"
 echo "Output: $VANILLA_DIR"
 echo ""

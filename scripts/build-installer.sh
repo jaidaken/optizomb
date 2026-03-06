@@ -30,7 +30,7 @@ echo "Building classes..."
 bash "$PROJECT_DIR/scripts/build.sh" "$TIER"
 echo ""
 
-# Step 2: Generate bsdiff patches — ONLY for files we actually modified
+# Step 2: Generate bsdiff patches - ONLY for files we actually modified
 echo "Generating binary patches (bsdiff)..."
 rm -rf "$PATCHES_DIR"
 mkdir -p "$PATCHES_DIR"
@@ -51,7 +51,7 @@ fi
 PATCH_COUNT=0
 NEW_COUNT=0
 
-# 2a: Process MODIFIED vanilla files — generate bsdiff patches
+# 2a: Process MODIFIED vanilla files - generate bsdiff patches
 # Source of truth: .java.patch files in patches/<tier>/
 echo "  Generating bsdiff for modified classes..."
 while IFS= read -r patchFile; do
@@ -82,7 +82,7 @@ while IFS= read -r patchFile; do
                                          -path "*/${baseName}\$*.class" -print0)
 done < <($FIND "$PATCH_SRC_DIR" -name "*.java.patch" -print)
 
-# 2b: Process NEW files — copy compiled classes as-is
+# 2b: Process NEW files - copy compiled classes as-is
 echo "  Copying new classes..."
 if [ -d "$PATCH_SRC_DIR/new" ]; then
     while IFS= read -r srcFile; do

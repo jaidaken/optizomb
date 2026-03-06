@@ -4,7 +4,7 @@
          }
      }
  
-+    // Opt 28g: fast filter for addItemsToProcessItems — most items don't need processing
++    // Opt 28g: fast filter for addItemsToProcessItems - most items don't need processing
 +    public boolean needsProcessing() {
 +        return this.isWet()
 +            || (!GameClient.bClient && this.canStoreWater() && this.hasReplaceType("WaterSource"));

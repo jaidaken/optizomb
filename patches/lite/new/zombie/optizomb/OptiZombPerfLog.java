@@ -13,7 +13,7 @@ import zombie.debug.DebugLog;
 public final class OptiZombPerfLog {
     private static final long LOG_INTERVAL_NS = 5_000_000_000L; // 5 seconds
 
-    // Atomic accumulators — safe for parallel worker threads
+    // Atomic accumulators - safe for parallel worker threads
     private static final AtomicLong separateTimeNs = new AtomicLong();
     private static final AtomicLong updateTimeNs = new AtomicLong();
     private static final AtomicLong postupdateTimeNs = new AtomicLong();
@@ -41,7 +41,7 @@ public final class OptiZombPerfLog {
     private static final AtomicLong postLuaDrainTimeNs = new AtomicLong();
     private static final AtomicInteger postAnimCountTotal = new AtomicInteger();
 
-    // Broad frame phase timers (main-thread only — no atomics needed)
+    // Broad frame phase timers (main-thread only - no atomics needed)
     private static long frameStepTimeNs = 0;
     private static long logicTimeNs = 0;
     private static long worldUpdateTimeNs = 0;
@@ -107,7 +107,7 @@ public final class OptiZombPerfLog {
     private static long collPostUpdateTimeNs = 0;
     private static long collSoundMgrTimeNs = 0;
 
-    // Animation sub-phase timers (parallel workers — need atomics)
+    // Animation sub-phase timers (parallel workers - need atomics)
     private static final AtomicLong animAdvAnimatorTimeNs = new AtomicLong();
     private static final AtomicLong animModelSlotUpdTimeNs = new AtomicLong();
     private static final AtomicLong animLightInfoTimeNs = new AtomicLong();
@@ -216,7 +216,7 @@ public final class OptiZombPerfLog {
     private static int uiRenderFrameCount = 0;
     private static int uiSkipFrameCount = 0;
 
-    // Render batch count (render-thread only — no atomics needed)
+    // Render batch count (render-thread only - no atomics needed)
     private static int batchCount = 0;
     private static int batchCallCount = 0;
 

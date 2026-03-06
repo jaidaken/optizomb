@@ -8,7 +8,7 @@ PATCHES_DIR="$PROJECT_DIR/patches"
 
 TIER="${1:-lite}"
 
-echo "=== OptiZomb — Update Patches ($TIER tier) ==="
+echo "=== OptiZomb - Update Patches ($TIER tier) ==="
 
 if [ ! -d "$VANILLA_DIR/zombie" ]; then
     echo "ERROR: Vanilla source not found. Run scripts/decompile.sh first."
@@ -30,18 +30,18 @@ while IFS= read -r srcFile; do
     vanillaFile="$VANILLA_DIR/$rel"
 
     if [ -f "$vanillaFile" ]; then
-        # Modified file — generate unified diff
+        # Modified file - generate unified diff
         patchFile="$TIER_DIR/$rel.patch"
         mkdir -p "$(dirname "$patchFile")"
         diff -u "$vanillaFile" "$srcFile" > "$patchFile" 2>/dev/null || true
         if [ -s "$patchFile" ]; then
             updated=$((updated + 1))
         else
-            # No differences — remove stale patch
+            # No differences - remove stale patch
             rm -f "$patchFile"
         fi
     else
-        # New file — copy to new/
+        # New file - copy to new/
         mkdir -p "$TIER_DIR/new/$(dirname "$rel")"
         cp "$srcFile" "$TIER_DIR/new/$rel"
         new_files=$((new_files + 1))

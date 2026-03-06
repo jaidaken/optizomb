@@ -7,8 +7,8 @@
 -    IsoChunk chunk;
 +    public IsoChunk chunk;
 +
-+    // Opt 27d Phase C: cached per-splat color hash (depends only on x, y, Type — immutable after creation)
-+    // NaN sentinel = not yet computed. Transient — render-only, not saved/loaded.
++    // Opt 27d Phase C: cached per-splat color hash (depends only on x, y, Type - immutable after creation)
++    // NaN sentinel = not yet computed. Transient - render-only, not saved/loaded.
 +    public float cachedR = Float.NaN;
 +    public float cachedG;
 +    public float cachedB;

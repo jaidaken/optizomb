@@ -10,9 +10,9 @@ import zombie.inventory.InventoryItem;
  * OptiZomb Item Container optimization (Opt 28).
  *
  * Sub-optimizations:
- *   28d: Type index — HashMap on ItemContainer for O(1) type lookups
- *   28e: FindAndReturn — HashSet skip set for O(1) exclusion checks
- *   28g: needsProcessing() — lazy ProcessItems filtering at chunk load
+ *   28d: Type index - HashMap on ItemContainer for O(1) type lookups
+ *   28e: FindAndReturn - HashSet skip set for O(1) exclusion checks
+ *   28g: needsProcessing() - lazy ProcessItems filtering at chunk load
  */
 public final class OptiZombItems {
 

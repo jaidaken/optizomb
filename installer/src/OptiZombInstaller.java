@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 import io.sigpipe.jbsdiff.Patch;
 
 /**
- * OptiZomb Lite Installer — cross-platform bsdiff patch-based approach.
+ * OptiZomb Lite Installer - cross-platform bsdiff patch-based approach.
  *
  * Supports Linux (loose .class files), Windows (projectzomboid.jar or loose),
  * and macOS. Auto-detects Steam installation via common paths and
@@ -75,12 +75,12 @@ public class OptiZombInstaller extends JFrame {
         JPanel root = new JPanel(new BorderLayout(10, 10));
         root.setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        JLabel header = new JLabel(TITLE + " — Client-Side Rendering Optimizer");
+        JLabel header = new JLabel(TITLE + " - Client-Side Rendering Optimizer");
         header.setFont(header.getFont().deriveFont(Font.BOLD, 16f));
         header.setHorizontalAlignment(SwingConstants.CENTER);
 
         JLabel subtitle = new JLabel("<html><center>"
-            + "GPU optimizations only — safe on any vanilla server.<br>"
+            + "GPU optimizations only - safe on any vanilla server.<br>"
             + "No gameplay or simulation changes.</center></html>");
         subtitle.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -521,7 +521,7 @@ public class OptiZombInstaller extends JFrame {
                 writeFileString(jsonPath, patched);
                 log("  " + fileName + ": added " + JAR_NAME + " to classpath");
             } else {
-                log("  WARNING: Could not patch " + fileName + " — unknown format");
+                log("  WARNING: Could not patch " + fileName + " - unknown format");
             }
         }
     }
@@ -529,12 +529,12 @@ public class OptiZombInstaller extends JFrame {
     /**
      * Detect system RAM and optimize -Xmx in all launcher JSONs.
      * Uses 50% of physical RAM, clamped to [3072, 16384] MB.
-     * Only bumps up — never reduces a user's existing setting.
+     * Only bumps up - never reduces a user's existing setting.
      */
     private void optimizeMemorySettings(Path workDir) throws IOException {
         long totalRamMB = detectSystemRamMB();
         if (totalRamMB <= 0) {
-            log("  Could not detect system RAM — skipping memory optimization");
+            log("  Could not detect system RAM - skipping memory optimization");
             return;
         }
 
@@ -933,7 +933,7 @@ public class OptiZombInstaller extends JFrame {
             return;
         }
 
-        // CLI mode — no GUI, works headless
+        // CLI mode - no GUI, works headless
         if (args.length >= 2 && ("--install".equals(args[0]) || "--uninstall".equals(args[0]))) {
             runCLI(args[0], args[1]);
             return;
@@ -959,7 +959,7 @@ public class OptiZombInstaller extends JFrame {
     }
 
     /**
-     * Headless CLI mode — no Swing, no display required.
+     * Headless CLI mode - no Swing, no display required.
      */
     private static void runCLI(String command, String path) {
         Path dir = Paths.get(path);

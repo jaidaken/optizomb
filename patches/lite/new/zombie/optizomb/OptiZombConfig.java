@@ -7,7 +7,7 @@ import java.util.Properties;
 import zombie.debug.DebugLog;
 
 /**
- * OptiZomb Lite — Runtime feature flags.
+ * OptiZomb Lite - Runtime feature flags.
  *
  * All fields are static final so the JIT can eliminate disabled branches entirely.
  * Loads from optizomb.properties at class-load time.
@@ -39,7 +39,7 @@ public final class OptiZombConfig {
         configSource = source;
         // Always print to console so it's visible even before DebugLog is initialized
         if (source == null) {
-            System.out.println("[OptiZomb] WARNING: No config file found — ALL optimizations ENABLED by default");
+            System.out.println("[OptiZomb] WARNING: No config file found - ALL optimizations ENABLED by default");
             System.out.println("[OptiZomb] Searched: " + System.getProperty("user.dir") + "/optizomb.properties");
         } else {
             System.out.println("[OptiZomb] Config loaded from: " + source);
@@ -128,11 +128,11 @@ public final class OptiZombConfig {
     /** Log resolved configuration to debug log */
     public static void logConfig() {
         if (configSource == null) {
-            DebugLog.General.println("[OptiZomb] No config file found — all optimizations enabled by default");
+            DebugLog.General.println("[OptiZomb] No config file found - all optimizations enabled by default");
         } else {
             DebugLog.General.println("[OptiZomb] Config loaded from: " + configSource);
         }
-        DebugLog.General.println("[OptiZomb] v" + VERSION + " — Resolved feature flags:");
+        DebugLog.General.println("[OptiZomb] v" + VERSION + " - Resolved feature flags:");
         DebugLog.General.println("[OptiZomb]   GL_FIX          = " + GL_FIX);
         DebugLog.General.println("[OptiZomb]   GL_CHARS         = " + GL_CHARS);
         DebugLog.General.println("[OptiZomb]   BONE_TBO         = " + BONE_TBO);

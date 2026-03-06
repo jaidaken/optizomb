@@ -65,4 +65,4 @@ fi
 CLASS_COUNT=$(find "$BUILD_DIR/classes" -name "*.class" 2>/dev/null | wc -l)
 echo ""
 echo "=== Minimal Build Complete ==="
-echo "Classes: $CLASS_COUNT (only modified — rest stays as vanilla bytecode)"
+echo "Classes: $CLASS_COUNT (only modified - rest stays as vanilla bytecode)"

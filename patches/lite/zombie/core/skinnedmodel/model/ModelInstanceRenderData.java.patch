@@ -12,7 +12,7 @@
              }
  
              this.matrixPalette.flip();
-+            // BONE_TBO: mark offset stale — actual append happens during rendering
++            // BONE_TBO: mark offset stale - actual append happens during rendering
 +            // to ensure data lands in the current frame's SSBO
 +            this.boneTexelOffset = -1;
          }

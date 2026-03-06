@@ -1,7 +1,7 @@
 #version 430 compatibility
 
 // BONE_TBO: GLSL 430 fragment shader for SSBO-based character rendering.
-// Self-contained — no #include of shared GLSL 110/120 util files to avoid link errors.
+// Self-contained - no #include of shared GLSL 110/120 util files to avoid link errors.
 
 in vec3 vertColour;
 in vec3 vertNormal;

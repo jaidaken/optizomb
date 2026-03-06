@@ -132,7 +132,7 @@ public final class OptiZombConfig {
         } else {
             DebugLog.General.println("[OptiZomb] Config loaded from: " + configSource);
         }
-        DebugLog.General.println("[OptiZomb] v0.4.0 — Resolved feature flags:");
+        DebugLog.General.println("[OptiZomb] v" + VERSION + " — Resolved feature flags:");
         DebugLog.General.println("[OptiZomb]   GL_FIX          = " + GL_FIX);
         DebugLog.General.println("[OptiZomb]   GL_CHARS         = " + GL_CHARS);
         DebugLog.General.println("[OptiZomb]   BONE_TBO         = " + BONE_TBO);

@@ -1,0 +1,14 @@
+--- vanilla/zombie/core/SpriteRenderer.java	2026-03-05 19:03:54.626774635 +0000
++++ src/zombie/core/SpriteRenderer.java	2026-03-06 01:57:33.694766590 +0000
+@@ -1150,9 +1150,9 @@
+                 return true;
+             } else if (byte0 != this.currentUseAttribArray) {
+                 return true;
+-            } else if (texture0 != this.currentTexture0) {
++            } else if (zombie.optizomb.OptiZombConfig.BATCH_MERGE ? !zombie.optizomb.OptiZombBatchMerge.isSameGLTexture(texture0, this.currentTexture0) : texture0 != this.currentTexture0) {
+                 return true;
+-            } else if (texture1 != this.currentTexture1) {
++            } else if (zombie.optizomb.OptiZombConfig.BATCH_MERGE ? !zombie.optizomb.OptiZombBatchMerge.isSameGLTexture(texture1, this.currentTexture1) : texture1 != this.currentTexture1) {
+                 return true;
+             } else {
+                 if (textureDraw1 != null) {

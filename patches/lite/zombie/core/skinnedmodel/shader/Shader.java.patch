@@ -1,0 +1,339 @@
+--- vanilla/zombie/core/skinnedmodel/shader/Shader.java	2026-03-05 19:03:49.634790303 +0000
++++ src/zombie/core/skinnedmodel/shader/Shader.java	2026-03-05 23:40:59.743656516 +0000
+@@ -20,6 +20,10 @@
+ import zombie.core.textures.SmartTexture;
+ import zombie.core.textures.Texture;
+ import zombie.debug.DebugOptions;
++import zombie.debug.DebugLog;
++import zombie.optizomb.OptiZombBoneTBOLog;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombGLChars;
+ import zombie.iso.IsoMovingObject;
+ import zombie.network.GameServer;
+ import zombie.network.ServerGUI;
+@@ -79,12 +83,31 @@
+     private static final Vector3f tempVec3f = new Vector3f();
+     private final FloatBuffer floatBuffer2 = BufferUtils.createFloatBuffer(16);
+ 
++    // GL_CHARS: light uniform ID arrays for O(1) lookup instead of if-else chains
++    private final int[] lightDirectionIDs = new int[5];
++    private final int[] lightColourIDs = new int[5];
++    // GL_CHARS: cached uniform locations for direct ARB calls
++    private int DepthBiasID;
++    private int AmbientColourID;
++    // BONE_TBO: SSBO bone matrix support
++    private int BoneBaseIndexID = -1;
++    private boolean useTBO = false;
++
+     public Shader(String string, boolean boolean0) {
+         this.name = string;
+         this.m_shaderProgram = ShaderProgram.createShaderProgram(string, boolean0, false);
+         this.m_shaderProgram.addCompileListener(this::onProgramCompiled);
+         this.bStatic = boolean0;
+         this.compile();
++        if (OptiZombConfig.BONE_TBO && string.contains("basicEffect")) {
++            DebugLog.General.println("[OptiZomb] Shader '%s' (bStatic=%b): programID=%d, useTBO=%b, compiled=%b",
++                string, boolean0, this.m_shaderProgram.getShaderID(), this.useTBO, this.m_shaderProgram.isCompiled());
++        }
++    }
++
++    /** Check if this shader successfully compiled as a TBO shader (has boneBaseIndex uniform) */
++    public boolean isTBOReady() {
++        return this.useTBO && this.m_shaderProgram.isCompiled();
+     }
+ 
+     public boolean isStatic() {
+@@ -116,6 +139,19 @@
+         this.Light3Direction = ARBShaderObjects.glGetUniformLocationARB(int0, "Light3Direction");
+         this.Light4Colour = ARBShaderObjects.glGetUniformLocationARB(int0, "Light4Colour");
+         this.Light4Direction = ARBShaderObjects.glGetUniformLocationARB(int0, "Light4Direction");
++
++        // GL_CHARS: populate light ID arrays for O(1) lookup
++        this.lightDirectionIDs[0] = this.Light0Direction;
++        this.lightDirectionIDs[1] = this.Light1Direction;
++        this.lightDirectionIDs[2] = this.Light2Direction;
++        this.lightDirectionIDs[3] = this.Light3Direction;
++        this.lightDirectionIDs[4] = this.Light4Direction;
++        this.lightColourIDs[0] = this.Light0Colour;
++        this.lightColourIDs[1] = this.Light1Colour;
++        this.lightColourIDs[2] = this.Light2Colour;
++        this.lightColourIDs[3] = this.Light3Colour;
++        this.lightColourIDs[4] = this.Light4Colour;
++
+         this.TintColour = ARBShaderObjects.glGetUniformLocationARB(int0, "TintColour");
+         this.Texture0 = ARBShaderObjects.glGetUniformLocationARB(int0, "Texture0");
+         this.TexturePainColor = ARBShaderObjects.glGetUniformLocationARB(int0, "TexturePainColor");
+@@ -144,6 +180,20 @@
+         this.TextureReflectionB = ARBShaderObjects.glGetUniformLocationARB(int0, "TextureReflectionB");
+         this.ReflectionParam = ARBShaderObjects.glGetUniformLocationARB(int0, "ReflectionParam");
+         this.UVScale = ARBShaderObjects.glGetUniformLocationARB(int0, "UVScale");
++
++        // GL_CHARS: cache uniform locations for direct ARB calls
++        this.DepthBiasID = ARBShaderObjects.glGetUniformLocationARB(int0, "DepthBias");
++        this.AmbientColourID = ARBShaderObjects.glGetUniformLocationARB(int0, "AmbientColour");
++
++        // BONE_TBO: detect SSBO shader (has boneBaseIndex but no MatrixPalette)
++        if (OptiZombConfig.BONE_TBO) {
++            this.BoneBaseIndexID = ARBShaderObjects.glGetUniformLocationARB(int0, "boneBaseIndex");
++            this.useTBO = (this.BoneBaseIndexID != -1 && this.MatrixID == -1);
++            if (this.useTBO) {
++                OptiZombBoneTBOLog.confirmShader(this.name);
++            }
++        }
++
+         this.m_shaderProgram.setSamplerUnit("Texture", 0);
+         if (this.Texture0 != -1) {
+             ARBShaderObjects.glUniform1iARB(this.Texture0, 0);
+@@ -209,25 +259,70 @@
+         return this.m_shaderProgram.getShaderID();
+     }
+ 
++    private static int lastBoundProgramID = 0;
++    private static Texture lastCharacterTexture = null;
++
+     public void Start() {
+         this.m_shaderProgram.Start();
++        if (OptiZombConfig.GL_CHARS) {
++            lastBoundProgramID = this.m_shaderProgram.getShaderID();
++        }
++    }
++
++    public void StartIfNeeded() {
++        if (OptiZombConfig.GL_CHARS) {
++            int id = this.m_shaderProgram.getShaderID();
++            if (id != lastBoundProgramID) {
++                this.m_shaderProgram.Start();
++                lastBoundProgramID = id;
++            }
++        } else {
++            this.m_shaderProgram.Start();
++        }
++    }
++
++    public static void resetLastBound() {
++        if (lastBoundProgramID != 0) {
++            ARBShaderObjects.glUseProgramObjectARB(0);
++            lastBoundProgramID = 0;
++        }
++    }
++
++    public static void resetCharacterTextureCache() {
++        lastCharacterTexture = null;
+     }
+ 
+     public void End() {
+         this.m_shaderProgram.End();
++        if (OptiZombConfig.GL_CHARS) {
++            lastBoundProgramID = 0;
++        }
+     }
+ 
+     public void startCharacter(ModelSlotRenderData modelSlotRenderData, ModelInstanceRenderData modelInstanceRenderData) {
+         if (this.bStatic) {
+             this.setTransformMatrix(modelInstanceRenderData.xfrm, true);
++        } else if (OptiZombConfig.BONE_TBO && this.useTBO) {
++            // BONE_TBO: single int uniform instead of 3840-byte matrix palette upload
++            ARBShaderObjects.glUniform1iARB(this.BoneBaseIndexID,
++                Math.max(0, modelInstanceRenderData.boneTexelOffset));
+         } else {
+             this.setMatrixPalette(modelInstanceRenderData.matrixPalette);
++            if (OptiZombConfig.BONE_TBO) {
++                OptiZombBoneTBOLog.onUniformFallback();
++            }
+         }
+ 
+         float float0 = modelSlotRenderData.ambientR * 0.45F;
+         float float1 = modelSlotRenderData.ambientG * 0.45F;
+         float float2 = modelSlotRenderData.ambientB * 0.45F;
+-        this.setLights(modelSlotRenderData, 5);
++
++        if (OptiZombConfig.GL_CHARS) {
++            this.setLightsPrecomputed(modelSlotRenderData, 5, modelSlotRenderData.animPlayerAngle);
++        } else {
++            this.setLights(modelSlotRenderData, 5);
++        }
++
+         Texture texture0 = modelInstanceRenderData.tex != null ? modelInstanceRenderData.tex : modelInstanceRenderData.model.tex;
+         if (DebugOptions.instance.IsoSprite.CharacterMipmapColors.getValue()) {
+             Texture texture1 = texture0 instanceof SmartTexture ? ((SmartTexture)texture0).result : texture0;
+@@ -236,7 +331,18 @@
+             }
+         }
+ 
+-        this.setTexture(texture0, "Texture", 0);
++        if (OptiZombConfig.GL_CHARS) {
++            if (texture0 != lastCharacterTexture) {
++                texture0.bind();
++                lastCharacterTexture = texture0;
++                OptiZombGLChars.onTextureCacheMiss();
++            } else {
++                OptiZombGLChars.onTextureCacheHit();
++            }
++        } else {
++            this.setTexture(texture0, "Texture", 0);
++        }
++
+         this.setDepthBias(modelInstanceRenderData.depthBias / 50.0F);
+         this.setAmbient(float0, float1, float2);
+         this.setLightingAmount(1.0F);
+@@ -270,6 +376,101 @@
+         }
+     }
+ 
++    // GL_CHARS: precomputed cos/sin once per zombie, array-indexed light setup
++    private void setLightsPrecomputed(ModelSlotRenderData modelSlotRenderData, int lightCount, float animAngle) {
++        boolean hasAngle = !Float.isNaN(animAngle);
++        float cosA = hasAngle ? Math.cos(-animAngle) : 0.0F;
++        float sinA = hasAngle ? Math.sin(-animAngle) : 0.0F;
++
++        for (int i = 0; i < lightCount; i++) {
++            ModelInstance.EffectLight light = modelSlotRenderData.effectLights[i];
++            float lr = light.r, lg = light.g, lb = light.b;
++            if (GameServer.bServer && ServerGUI.isCreated()) {
++                lr = lg = lb = 1.0F;
++            }
++            this.setLightPrecomputed(
++                i, light.x, light.y, light.z,
++                lr, lg, lb, light.radius,
++                cosA, sinA, hasAngle,
++                modelSlotRenderData.x, modelSlotRenderData.y, modelSlotRenderData.z
++            );
++        }
++
++        for (int i = lightCount; i < 5; i++) {
++            this.zeroLight(i);
++        }
++    }
++
++    // GL_CHARS: per-light setup with precomputed trig, array lookups, and early-out
++    private void setLightPrecomputed(
++        int lightIndex,
++        float lightX, float lightY, float lightZ,
++        float r, float g, float b,
++        float radius,
++        float cosAngle, float sinAngle, boolean hasAngle,
++        float objX, float objY, float objZ
++    ) {
++        OptiZombGLChars.onLightProcessed();
++
++        if (r + g + b == 0.0F || radius <= 0.0F) {
++            this.zeroLight(lightIndex);
++            return;
++        }
++
++        Vector3f vec = tempVec3f;
++        if (hasAngle) {
++            vec.set(lightX - objX, lightY - objY, lightZ - objZ);
++        } else {
++            vec.set(lightX, lightY, lightZ);
++        }
++
++        float dist = vec.length();
++        if (dist < 1.0E-4F) {
++            vec.set(0.0F, 0.0F, 1.0F);
++        } else {
++            vec.normalise();
++        }
++
++        float atten = 1.0F - dist / radius;
++        if (atten < 0.01F) {
++            this.zeroLight(lightIndex);
++            OptiZombGLChars.onLightEarlyOut();
++            return;
++        }
++
++        if (hasAngle) {
++            float vx = vec.x;
++            float vy = vec.y;
++            vec.x = vx * cosAngle - vy * sinAngle;
++            vec.y = vx * sinAngle + vy * cosAngle;
++        }
++
++        float tmpY = vec.y;
++        vec.y = vec.z;
++        vec.z = tmpY;
++        if (vec.length() < 1.0E-4F) {
++            vec.set(0.0F, 1.0F, 0.0F);
++        }
++        vec.normalise();
++
++        if (atten > 1.0F) {
++            atten = 1.0F;
++        }
++
++        r = PZMath.clamp(r * atten, 0.0F, 1.0F);
++        g = PZMath.clamp(g * atten, 0.0F, 1.0F);
++        b = PZMath.clamp(b * atten, 0.0F, 1.0F);
++
++        ARBShaderObjects.glUniform3fARB(this.lightDirectionIDs[lightIndex], -vec.x, vec.y, vec.z);
++        ARBShaderObjects.glUniform3fARB(this.lightColourIDs[lightIndex], r, g, b);
++    }
++
++    // GL_CHARS: zero a light slot using array lookup
++    private void zeroLight(int lightIndex) {
++        ARBShaderObjects.glUniform3fARB(this.lightDirectionIDs[lightIndex], 0.0F, 1.0F, 0.0F);
++        ARBShaderObjects.glUniform3fARB(this.lightColourIDs[lightIndex], 0.0F, 0.0F, 0.0F);
++    }
++
+     public void updateAlpha(IsoGameCharacter character, int int0) {
+         if (character != null) {
+             this.setAlpha(character.getAlpha(int0));
+@@ -529,26 +730,53 @@
+ 
+     public void setHueShift(float float0) {
+         if (this.HueChange > 0) {
+-            this.m_shaderProgram.setValue("HueChange", float0);
++            if (OptiZombConfig.GL_CHARS) {
++                ARBShaderObjects.glUniform1fARB(this.HueChange, float0);
++                OptiZombGLChars.onUniformBypass();
++            } else {
++                this.m_shaderProgram.setValue("HueChange", float0);
++            }
+         }
+     }
+ 
+     public void setLightingAmount(float float0) {
+         if (this.LightingAmount > 0) {
+-            this.m_shaderProgram.setValue("LightingAmount", float0);
++            if (OptiZombConfig.GL_CHARS) {
++                ARBShaderObjects.glUniform1fARB(this.LightingAmount, float0);
++            } else {
++                this.m_shaderProgram.setValue("LightingAmount", float0);
++            }
+         }
+     }
+ 
+     public void setDepthBias(float float0) {
+-        this.m_shaderProgram.setValue("DepthBias", float0 / 300.0F);
++        if (OptiZombConfig.GL_CHARS) {
++            if (this.DepthBiasID >= 0) {
++                ARBShaderObjects.glUniform1fARB(this.DepthBiasID, float0 / 300.0F);
++            }
++        } else {
++            this.m_shaderProgram.setValue("DepthBias", float0 / 300.0F);
++        }
+     }
+ 
+     public void setAmbient(float float0) {
+-        this.m_shaderProgram.setVector3("AmbientColour", float0, float0, float0);
++        if (OptiZombConfig.GL_CHARS) {
++            if (this.AmbientColourID >= 0) {
++                ARBShaderObjects.glUniform3fARB(this.AmbientColourID, float0, float0, float0);
++            }
++        } else {
++            this.m_shaderProgram.setVector3("AmbientColour", float0, float0, float0);
++        }
+     }
+ 
+     public void setAmbient(float float0, float float1, float float2) {
+-        this.m_shaderProgram.setVector3("AmbientColour", float0, float1, float2);
++        if (OptiZombConfig.GL_CHARS) {
++            if (this.AmbientColourID >= 0) {
++                ARBShaderObjects.glUniform3fARB(this.AmbientColourID, float0, float1, float2);
++            }
++        } else {
++            this.m_shaderProgram.setVector3("AmbientColour", float0, float1, float2);
++        }
+     }
+ 
+     public void setTransformMatrix(Matrix4f matrix4f, boolean boolean0) {

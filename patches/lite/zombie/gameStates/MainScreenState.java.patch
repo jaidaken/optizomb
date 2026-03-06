@@ -1,0 +1,35 @@
+--- vanilla/zombie/gameStates/MainScreenState.java	2026-03-05 19:03:44.633806007 +0000
++++ src/zombie/gameStates/MainScreenState.java	2026-03-05 23:24:13.077942067 +0000
+@@ -23,6 +23,7 @@
+ import org.lwjglx.opengl.Display;
+ import org.lwjglx.opengl.OpenGLException;
+ import zombie.DebugFileWatcher;
++import zombie.optizomb.OptiZombConfig;
+ import zombie.GameTime;
+ import zombie.GameWindow;
+ import zombie.IndieGL;
+@@ -221,6 +222,7 @@
+ 
+     @Override
+     public void enter() {
++        OptiZombConfig.logConfig(); // [OptiZomb] log feature flags on startup
+         DebugLog.log("EXITDEBUG: MainScreenState.enter 1");
+         this.Elements.clear();
+         this.targetAlpha = 1.0F;
+@@ -313,6 +315,16 @@
+             UIManager.DrawTexture(UIManager.getBlack(), 0.0, 0.0, Core.getInstance().getScreenWidth(), Core.getInstance().getScreenHeight(), this.FadeAlpha);
+         }
+ 
++        TextManager.instance
++            .DrawString(
++                5.0,
++                Core.getInstance().getScreenHeight() - 20,
++                "OptiZomb v" + OptiZombConfig.VERSION,
++                0.4,
++                0.9,
++                0.4,
++                0.8
++            );
+         ActiveMods.renderUI();
+         JoypadManager.instance.renderUI();
+         Core.getInstance().EndFrameUI();

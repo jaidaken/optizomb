@@ -1,0 +1,147 @@
+--- vanilla/zombie/iso/IsoGridSquare.java	2026-03-05 19:03:37.376828807 +0000
++++ src/zombie/iso/IsoGridSquare.java	2026-03-06 01:48:26.271564148 +0000
+@@ -28,6 +28,8 @@
+ import zombie.GameWindow;
+ import zombie.IndieGL;
+ import zombie.MapCollisionData;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombTilesChars;
+ import zombie.SandboxOptions;
+ import zombie.SoundManager;
+ import zombie.ZomboidBitFlag;
+@@ -158,6 +160,8 @@
+     private final boolean[] playerCutawayFlags = new boolean[4];
+     private final long[] playerCutawayFlagLockUntilTimes = new long[4];
+     private final boolean[] targetPlayerCutawayFlags = new boolean[4];
++    int occlusionCacheFrame = -1;
++    boolean occlusionCacheResult;
+     private final boolean[] playerIsDissolvedFlags = new boolean[4];
+     private final long[] playerIsDissolvedFlagLockUntilTimes = new long[4];
+     private final boolean[] targetPlayerIsDissolvedFlags = new boolean[4];
+@@ -6484,8 +6488,10 @@
+                 IndieGL.glColorMask(false, false, false, false);
+                 Texture.getWhite().renderwallnw(float0, float1, 64 * Core.TileScale, 32 * Core.TileScale, -1, -1, -1, -1, -1, -1);
+                 IndieGL.glColorMask(true, true, true, true);
+-                IndieGL.enableAlphaTest();
+-                IndieGL.glAlphaFunc(516, 0.0F);
++                if (!OptiZombConfig.TILES_CHARS) {
++                    IndieGL.enableAlphaTest();
++                    IndieGL.glAlphaFunc(516, 0.0F);
++                }
+                 IndieGL.glStencilFunc(514, short0, 127);
+                 IndieGL.glStencilOp(7680, 7680, 7680);
+                 ColorInfo colorInfo = this.lightInfo[IsoCamera.frameState.playerIndex];
+@@ -6601,7 +6607,22 @@
+             int int1 = this.getRoomID();
+             if (int1 != -1) {
+                 int int2 = IsoWorld.instance.CurrentCell.GetEffectivePlayerRoomId();
+-                if (int2 == -1 && IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int0)) {
++                boolean _occluded;
++                if (OptiZombConfig.TILES_CHARS) {
++                    int _occKey = (IsoCamera.frameState.frameCount << 2) | int0;
++                    if (this.occlusionCacheFrame == _occKey) {
++                        _occluded = this.occlusionCacheResult;
++                        OptiZombTilesChars.recordOcclusionCacheHit();
++                    } else {
++                        _occluded = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int0);
++                        this.occlusionCacheFrame = _occKey;
++                        this.occlusionCacheResult = _occluded;
++                        OptiZombTilesChars.recordOcclusionCacheMiss();
++                    }
++                } else {
++                    _occluded = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int0);
++                }
++                if (int2 == -1 && _occluded) {
+                     boolean3 = false;
+                     float1 = 1.0F;
+                     float2 = 1.0F;
+@@ -6928,7 +6949,21 @@
+             ColorInfo colorInfo = this.lightInfo[int1];
+             boolean boolean0 = this.lighting[int1].bCouldSee();
+             float float0 = this.lighting[int1].darkMulti();
+-            boolean boolean1 = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int1);
++            boolean boolean1;
++            if (OptiZombConfig.TILES_CHARS) {
++                int _occKey = (IsoCamera.frameState.frameCount << 2) | int1;
++                if (this.occlusionCacheFrame == _occKey) {
++                    boolean1 = this.occlusionCacheResult;
++                    OptiZombTilesChars.recordOcclusionCacheHit();
++                } else {
++                    boolean1 = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int1);
++                    this.occlusionCacheFrame = _occKey;
++                    this.occlusionCacheResult = boolean1;
++                    OptiZombTilesChars.recordOcclusionCacheMiss();
++                }
++            } else {
++                boolean1 = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int1);
++            }
+             colorInfo.a = 1.0F;
+             defColorInfo.r = 1.0F;
+             defColorInfo.g = 1.0F;
+@@ -7000,8 +7035,17 @@
+                     objectType = object1.sprite.getType();
+                 }
+ 
++                short _rf = 0;
++                if (OptiZombConfig.TILES_CHARS) {
++                    if (object1.renderFlagsDirty) {
++                        object1.computeRenderFlags();
++                    }
++                    _rf = object1.renderFlags;
++                    OptiZombTilesChars.recordRenderFlagCacheHit();
++                }
++
+                 CircleStencil = false;
+-                if (object1.sprite != null && (object1.sprite.solidfloor || object1.sprite.renderLayer == 1)) {
++                if (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_SOLID_FLOOR_OR_LAYER1) != 0 : object1.sprite != null && (object1.sprite.solidfloor || object1.sprite.renderLayer == 1)) {
+                     boolean12 = false;
+                 }
+ 
+@@ -7009,11 +7053,11 @@
+                     boolean12 = !boolean13;
+                 }
+ 
+-                if (this.z >= int8 && (object1.sprite == null || !object1.sprite.alwaysDraw)) {
++                if (this.z >= int8 && (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_ALWAYS_DRAW) == 0 : object1.sprite == null || !object1.sprite.alwaysDraw)) {
+                     boolean12 = false;
+                 }
+ 
+-                boolean boolean14 = object1.sprite != null && (object1.sprite.isBush || object1.sprite.canBeRemoved || object1.sprite.attachedFloor);
++                boolean boolean14 = OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_BUSH_OR_REMOVABLE) != 0 : object1.sprite != null && (object1.sprite.isBush || object1.sprite.canBeRemoved || object1.sprite.attachedFloor);
+                 if ((!boolean13 || boolean14 && this.bFlattenGrassEtc) && (boolean13 || !boolean14 || !this.bFlattenGrassEtc)) {
+                     if (object1.sprite != null
+                         && (objectType == IsoObjectType.WestRoofB || objectType == IsoObjectType.WestRoofM || objectType == IsoObjectType.WestRoofT)
+@@ -7024,22 +7068,25 @@
+ 
+                     boolean boolean15 = objectType == IsoObjectType.doorFrW
+                         || objectType == IsoObjectType.doorW
+-                        || object1.sprite != null && object1.sprite.cutW;
++                        || (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_CUT_W) != 0 : object1.sprite != null && object1.sprite.cutW);
+                     boolean boolean16 = objectType == IsoObjectType.doorFrN
+                         || objectType == IsoObjectType.doorN
+-                        || object1.sprite != null && object1.sprite.cutN;
+-                    boolean boolean17 = object1 instanceof IsoDoor && ((IsoDoor)object1).open
+-                        || object1 instanceof IsoThumpable && ((IsoThumpable)object1).open;
++                        || (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_CUT_N) != 0 : object1.sprite != null && object1.sprite.cutN);
++                    boolean boolean17 = OptiZombConfig.TILES_CHARS
++                        ? ((_rf & IsoObject.RF_IS_DOOR) != 0 && ((IsoDoor)object1).open
++                            || (_rf & IsoObject.RF_IS_THUMPABLE) != 0 && ((IsoThumpable)object1).open)
++                        : (object1 instanceof IsoDoor && ((IsoDoor)object1).open
++                            || object1 instanceof IsoThumpable && ((IsoThumpable)object1).open);
+                     boolean boolean18 = object1.container != null;
+                     boolean boolean19 = object1.sprite != null && object1.sprite.getProperties().Is(IsoFlagType.waterPiped);
+                     if (object1.sprite != null
+                         && objectType == IsoObjectType.MAX
+-                        && !(object1 instanceof IsoDoor)
+-                        && !(object1 instanceof IsoWindow)
++                        && (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_IS_DOOR) == 0 : !(object1 instanceof IsoDoor))
++                        && (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_IS_WINDOW) == 0 : !(object1 instanceof IsoWindow))
+                         && !boolean18
+                         && !boolean19) {
+-                        if (boolean15 || !object1.sprite.getProperties().Is(IsoFlagType.attachedW) || !boolean1 && !boolean11 && !boolean9) {
+-                            if (!boolean16 && object1.sprite.getProperties().Is(IsoFlagType.attachedN) && (boolean1 || boolean9 || boolean10)) {
++                        if (boolean15 || !(OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_ATTACHED_W) != 0 : object1.sprite.getProperties().Is(IsoFlagType.attachedW)) || !boolean1 && !boolean11 && !boolean9) {
++                            if (!boolean16 && (OptiZombConfig.TILES_CHARS ? (_rf & IsoObject.RF_ATTACHED_N) != 0 : object1.sprite.getProperties().Is(IsoFlagType.attachedN)) && (boolean1 || boolean9 || boolean10)) {
+                                 boolean12 = !bWallCutawayN;
+                             }
+                         } else {

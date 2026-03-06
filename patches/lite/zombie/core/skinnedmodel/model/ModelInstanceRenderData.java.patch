@@ -1,0 +1,28 @@
+--- vanilla/zombie/core/skinnedmodel/model/ModelInstanceRenderData.java	2026-03-05 19:03:50.703786948 +0000
++++ src/zombie/core/skinnedmodel/model/ModelInstanceRenderData.java	2026-03-06 01:44:24.296384642 +0000
+@@ -34,6 +34,7 @@
+     public SoftwareModelMeshInstance softwareMesh;
+     public ModelInstance modelInstance;
+     public boolean m_muzzleFlash = false;
++    public int boneTexelOffset = -1;
+     protected ModelInstanceDebugRenderData m_debugRenderData;
+     private static final ObjectPool<ModelInstanceRenderData> pool = new ObjectPool<>(ModelInstanceRenderData::new);
+ 
+@@ -66,6 +67,9 @@
+             }
+ 
+             this.matrixPalette.flip();
++            // BONE_TBO: mark offset stale — actual append happens during rendering
++            // to ensure data lands in the current frame's SSBO
++            this.boneTexelOffset = -1;
+         }
+ 
+         VehicleSubModelInstance vehicleSubModelInstance = Type.tryCastTo(modelInstancex, VehicleSubModelInstance.class);
+@@ -232,6 +236,7 @@
+             modelInstanceRenderData.model = null;
+             modelInstanceRenderData.tex = null;
+             modelInstanceRenderData.softwareMesh = null;
++            modelInstanceRenderData.boneTexelOffset = -1;
+             modelInstanceRenderData.m_debugRenderData = Pool.tryRelease(modelInstanceRenderData.m_debugRenderData);
+         }
+ 

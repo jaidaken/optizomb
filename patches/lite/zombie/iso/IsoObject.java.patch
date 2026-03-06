@@ -1,0 +1,137 @@
+--- vanilla/zombie/iso/IsoObject.java	2026-03-05 19:03:31.959845839 +0000
++++ src/zombie/iso/IsoObject.java	2026-03-06 00:45:55.367103090 +0000
+@@ -100,6 +100,8 @@
+ import zombie.iso.sprite.shapers.WallShaperN;
+ import zombie.iso.sprite.shapers.WallShaperW;
+ import zombie.iso.sprite.shapers.WallShaperWhole;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombTilesChars;
+ import zombie.network.GameClient;
+ import zombie.network.GameServer;
+ import zombie.network.PacketTypes;
+@@ -143,6 +145,18 @@
+     public ItemContainer container = null;
+     public IsoDirections dir = IsoDirections.N;
+     public short Damage = 100;
++    public short renderFlags = 0;
++    public boolean renderFlagsDirty = true;
++    public static final short RF_CUT_W = 1;
++    public static final short RF_CUT_N = 2;
++    public static final short RF_SOLID_FLOOR_OR_LAYER1 = 4;
++    public static final short RF_BUSH_OR_REMOVABLE = 8;
++    public static final short RF_IS_WINDOW = 16;
++    public static final short RF_IS_DOOR = 32;
++    public static final short RF_IS_THUMPABLE = 64;
++    public static final short RF_ATTACHED_W = 128;
++    public static final short RF_ATTACHED_N = 256;
++    public static final short RF_ALWAYS_DRAW = 512;
+     public float partialThumpDmg = 0.0F;
+     public boolean NoPicking = false;
+     public float offsetX = (float)(32 * Core.TileScale);
+@@ -203,6 +217,7 @@
+         this();
+         this.sprite = spritex;
+         this.square = squarex;
++        this.computeRenderFlags();
+     }
+ 
+     public IsoObject(IsoCell var1, IsoGridSquare squarex, String string) {
+@@ -210,6 +225,7 @@
+         this.sprite = IsoSpriteManager.instance.getSprite(string);
+         this.square = squarex;
+         this.tile = string;
++        this.computeRenderFlags();
+     }
+ 
+     public IsoObject(IsoGridSquare squarex, String string0, String string1) {
+@@ -219,6 +235,7 @@
+         this.tile = string0;
+         this.spriteName = string0;
+         this.name = string1;
++        this.computeRenderFlags();
+     }
+ 
+     public IsoObject(IsoGridSquare squarex, String string0, String string1, boolean boolean0) {
+@@ -233,6 +250,7 @@
+         this.tile = string0;
+         this.square = squarex;
+         this.name = string1;
++        this.computeRenderFlags();
+     }
+ 
+     public boolean isFloor() {
+@@ -250,6 +268,7 @@
+ 
+         this.tile = string;
+         this.square = squarex;
++        this.computeRenderFlags();
+     }
+ 
+     public IsoObject(IsoGridSquare squarex, String string) {
+@@ -257,6 +276,7 @@
+         this.sprite = IsoSprite.CreateSprite(IsoSpriteManager.instance);
+         this.sprite.LoadFramesNoDirPageSimple(string);
+         this.square = squarex;
++        this.computeRenderFlags();
+     }
+ 
+     public static IsoObject getNew(IsoGridSquare squarex, String string0, String string1, boolean boolean0) {
+@@ -1059,6 +1079,8 @@
+             this.sprite = IsoSprite.CreateSprite(IsoSpriteManager.instance);
+             this.sprite.LoadFramesNoDirPageSimple(this.spriteName);
+         }
++
++        this.computeRenderFlags();
+     }
+ 
+     public final void save(ByteBuffer byteBuffer) throws IOException {
+@@ -1588,6 +1610,7 @@
+         this.sprite = spritex;
+         this.windRenderEffects = null;
+         this.checkMoveWithWind();
++        this.computeRenderFlags();
+     }
+ 
+     public void setSprite(String string) {
+@@ -1597,12 +1620,23 @@
+         this.spriteName = string;
+         this.windRenderEffects = null;
+         this.checkMoveWithWind();
++        this.computeRenderFlags();
+     }
+ 
+     public void setSpriteFromName(String string) {
+         this.sprite = IsoSpriteManager.instance.getSprite(string);
+         this.windRenderEffects = null;
+         this.checkMoveWithWind();
++        this.computeRenderFlags();
++    }
++
++    public void computeRenderFlags() {
++        if (!OptiZombConfig.TILES_CHARS) {
++            this.renderFlagsDirty = false;
++            return;
++        }
++        this.renderFlags = OptiZombTilesChars.computeRenderFlags(this);
++        this.renderFlagsDirty = false;
+     }
+ 
+     public float getTargetAlpha() {
+@@ -1744,6 +1778,8 @@
+         this.rerouteMask = null;
+         this.sprite = null;
+         this.square = null;
++        this.renderFlags = 0;
++        this.renderFlagsDirty = true;
+ 
+         for (int int1 = 0; int1 < 4; int1++) {
+             this.setAlphaAndTarget(int1, 1.0F);
+@@ -3579,6 +3615,8 @@
+                     this.sprite = IsoSprite.CreateSprite(IsoSpriteManager.instance);
+                     this.sprite.LoadFramesNoDirPageSimple(this.spriteName);
+                 }
++
++                this.computeRenderFlags();
+             }
+         } else if ("emptyTrash".equals(string0)) {
+             this.getContainer().clear();

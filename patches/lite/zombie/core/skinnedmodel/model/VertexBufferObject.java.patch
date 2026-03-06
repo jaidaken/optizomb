@@ -1,0 +1,212 @@
+--- vanilla/zombie/core/skinnedmodel/model/VertexBufferObject.java	2026-03-05 19:03:50.351788052 +0000
++++ src/zombie/core/skinnedmodel/model/VertexBufferObject.java	2026-03-05 22:34:34.523222929 +0000
+@@ -10,10 +10,41 @@
+ import zombie.core.opengl.RenderThread;
+ import zombie.core.skinnedmodel.shader.Shader;
+ import zombie.debug.DebugOptions;
++import zombie.optizomb.OptiZombConfig;
+ import zombie.util.list.PZArrayUtil;
+ 
+ public final class VertexBufferObject {
+     public static IGLBufferObject funcs;
++
++    private static int lastBoundVboID = 0;
++    private static int lastBoundEboID = 0;
++    private static int lastSetupShaderID = 0;
++
++    private static int lastBoneWeightsAttrib = -1;
++    private static int lastBoneIndicesAttrib = -1;
++    private static boolean normalArrayEnabled = false;
++
++    public static void resetVBOCache() {
++        lastBoundVboID = 0;
++        lastBoundEboID = 0;
++        lastSetupShaderID = 0;
++    }
++
++    public static void restoreClientState() {
++        if (lastBoneWeightsAttrib >= 0) {
++            GL20.glDisableVertexAttribArray(lastBoneWeightsAttrib);
++            lastBoneWeightsAttrib = -1;
++        }
++        if (lastBoneIndicesAttrib >= 0) {
++            GL20.glDisableVertexAttribArray(lastBoneIndicesAttrib);
++            lastBoneIndicesAttrib = -1;
++        }
++        if (normalArrayEnabled) {
++            GL20.glDisableClientState(32885);
++            normalArrayEnabled = false;
++        }
++    }
++
+     int[] elements;
+     VertexBufferObject.Vbo _handle;
+     private final VertexBufferObject.VertexFormat m_vertexFormat;
+@@ -299,57 +330,118 @@
+     private static void Draw(VertexBufferObject.Vbo vbo, VertexBufferObject.VertexFormat vertexFormat, Shader shader, int int4) {
+         if (vbo != null) {
+             if (!DebugOptions.instance.DebugDraw_SkipVBODraw.getValue()) {
+-                int int0 = 33984;
+-                boolean boolean0 = false;
+-                if (!vbo.FaceDataOnly) {
+-                    funcs.glBindBuffer(funcs.GL_ARRAY_BUFFER(), vbo.VboID);
+-
+-                    for (int int1 = 0; int1 < vertexFormat.m_elements.length; int1++) {
+-                        VertexBufferObject.VertexElement vertexElement = vertexFormat.m_elements[int1];
+-                        switch (vertexElement.m_type) {
+-                            case VertexArray:
+-                                GL20.glVertexPointer(3, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                GL20.glEnableClientState(32884);
+-                                break;
+-                            case NormalArray:
+-                                GL20.glNormalPointer(5126, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                GL20.glEnableClientState(32885);
+-                                break;
+-                            case ColorArray:
+-                                GL20.glColorPointer(3, 5121, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                GL20.glEnableClientState(32886);
+-                                break;
+-                            case TextureCoordArray:
+-                                GL20.glActiveTexture(int0);
+-                                GL20.glClientActiveTexture(int0);
+-                                GL20.glTexCoordPointer(2, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                int0++;
+-                                GL20.glEnableClientState(32888);
+-                            case TangentArray:
+-                            default:
+-                                break;
+-                            case BlendWeightArray:
+-                                int int2 = shader.BoneWeightsAttrib;
+-                                GL20.glVertexAttribPointer(int2, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                GL20.glEnableVertexAttribArray(int2);
+-                                boolean0 = true;
+-                                break;
+-                            case BlendIndexArray:
+-                                int int3 = shader.BoneIndicesAttrib;
+-                                GL20.glVertexAttribPointer(int3, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
+-                                GL20.glEnableVertexAttribArray(int3);
++                if (OptiZombConfig.GL_CHARS) {
++                    if (!vbo.FaceDataOnly) {
++                        int shaderID = shader != null ? shader.getID() : 0;
++                        if (vbo.VboID != lastBoundVboID || shaderID != lastSetupShaderID) {
++                            if (lastBoneWeightsAttrib >= 0) {
++                                GL20.glDisableVertexAttribArray(lastBoneWeightsAttrib);
++                                lastBoneWeightsAttrib = -1;
++                            }
++                            if (lastBoneIndicesAttrib >= 0) {
++                                GL20.glDisableVertexAttribArray(lastBoneIndicesAttrib);
++                                lastBoneIndicesAttrib = -1;
++                            }
++                            lastSetupShaderID = shaderID;
++                            int int0 = 33984;
++                            funcs.glBindBuffer(funcs.GL_ARRAY_BUFFER(), vbo.VboID);
++                            lastBoundVboID = vbo.VboID;
++                            for (int int1 = 0; int1 < vertexFormat.m_elements.length; int1++) {
++                                VertexBufferObject.VertexElement vertexElement = vertexFormat.m_elements[int1];
++                                switch (vertexElement.m_type) {
++                                    case VertexArray:
++                                        GL20.glVertexPointer(3, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        GL20.glEnableClientState(32884);
++                                        break;
++                                    case NormalArray:
++                                        GL20.glNormalPointer(5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        GL20.glEnableClientState(32885);
++                                        normalArrayEnabled = true;
++                                        break;
++                                    case ColorArray:
++                                        GL20.glColorPointer(3, 5121, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        GL20.glEnableClientState(32886);
++                                        break;
++                                    case TextureCoordArray:
++                                        GL20.glActiveTexture(int0);
++                                        GL20.glClientActiveTexture(int0);
++                                        GL20.glTexCoordPointer(2, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        int0++;
++                                        GL20.glEnableClientState(32888);
++                                    case TangentArray:
++                                    default:
++                                        break;
++                                    case BlendWeightArray:
++                                        int int2 = shader.BoneWeightsAttrib;
++                                        GL20.glVertexAttribPointer(int2, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        GL20.glEnableVertexAttribArray(int2);
++                                        lastBoneWeightsAttrib = int2;
++                                        break;
++                                    case BlendIndexArray:
++                                        int int3 = shader.BoneIndicesAttrib;
++                                        GL20.glVertexAttribPointer(int3, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
++                                        GL20.glEnableVertexAttribArray(int3);
++                                        lastBoneIndicesAttrib = int3;
++                                }
++                            }
+                         }
+                     }
+-                }
+-
+-                funcs.glBindBuffer(funcs.GL_ELEMENT_ARRAY_BUFFER(), vbo.EboID);
+-                GL20.glDrawElements(int4, vbo.NumElements, 5125, 0L);
+-                GL20.glDisableClientState(32885);
+-                if (boolean0 && shader != null) {
+-                    int int5 = shader.BoneWeightsAttrib;
+-                    GL20.glDisableVertexAttribArray(int5);
+-                    int5 = shader.BoneIndicesAttrib;
+-                    GL20.glDisableVertexAttribArray(int5);
++                    if (vbo.EboID != lastBoundEboID) {
++                        funcs.glBindBuffer(funcs.GL_ELEMENT_ARRAY_BUFFER(), vbo.EboID);
++                        lastBoundEboID = vbo.EboID;
++                    }
++                    GL20.glDrawElements(int4, vbo.NumElements, 5125, 0L);
++                } else {
++                    int int0 = 33984;
++                    boolean boolean0 = false;
++                    if (!vbo.FaceDataOnly) {
++                        funcs.glBindBuffer(funcs.GL_ARRAY_BUFFER(), vbo.VboID);
++                        for (int int1 = 0; int1 < vertexFormat.m_elements.length; int1++) {
++                            VertexBufferObject.VertexElement vertexElement = vertexFormat.m_elements[int1];
++                            switch (vertexElement.m_type) {
++                                case VertexArray:
++                                    GL20.glVertexPointer(3, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    GL20.glEnableClientState(32884);
++                                    break;
++                                case NormalArray:
++                                    GL20.glNormalPointer(5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    GL20.glEnableClientState(32885);
++                                    break;
++                                case ColorArray:
++                                    GL20.glColorPointer(3, 5121, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    GL20.glEnableClientState(32886);
++                                    break;
++                                case TextureCoordArray:
++                                    GL20.glActiveTexture(int0);
++                                    GL20.glClientActiveTexture(int0);
++                                    GL20.glTexCoordPointer(2, 5126, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    int0++;
++                                    GL20.glEnableClientState(32888);
++                                case TangentArray:
++                                default:
++                                    break;
++                                case BlendWeightArray:
++                                    int int2 = shader.BoneWeightsAttrib;
++                                    GL20.glVertexAttribPointer(int2, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    GL20.glEnableVertexAttribArray(int2);
++                                    boolean0 = true;
++                                    break;
++                                case BlendIndexArray:
++                                    int int3 = shader.BoneIndicesAttrib;
++                                    GL20.glVertexAttribPointer(int3, 4, 5126, false, vbo.VertexStride, vertexElement.m_byteOffset);
++                                    GL20.glEnableVertexAttribArray(int3);
++                            }
++                        }
++                    }
++                    funcs.glBindBuffer(funcs.GL_ELEMENT_ARRAY_BUFFER(), vbo.EboID);
++                    GL20.glDrawElements(int4, vbo.NumElements, 5125, 0L);
++                    GL20.glDisableClientState(32885);
++                    if (boolean0 && shader != null) {
++                        int int5 = shader.BoneWeightsAttrib;
++                        GL20.glDisableVertexAttribArray(int5);
++                        int5 = shader.BoneIndicesAttrib;
++                        GL20.glDisableVertexAttribArray(int5);
++                    }
+                 }
+             }
+         }

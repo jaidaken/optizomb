@@ -1,0 +1,147 @@
+--- vanilla/zombie/GameWindow.java	2026-03-05 19:04:15.099710458 +0000
++++ src/zombie/GameWindow.java	2026-03-06 01:57:41.641733875 +0000
+@@ -31,6 +31,9 @@
+ import org.lwjglx.opengl.DisplayMode;
+ import org.lwjglx.opengl.OpenGLException;
+ import zombie.Lua.LuaEventManager;
++import zombie.optizomb.OptiZombGLFix;
++import zombie.optizomb.OptiZombGPUProfiler;
++import zombie.optizomb.OptiZombPerfLog;
+ import zombie.Lua.LuaManager;
+ import zombie.asset.AssetManagers;
+ import zombie.audio.BaseSoundBank;
+@@ -230,6 +233,7 @@
+     }
+ 
+     private static void logic() {
++        long _netStart = System.nanoTime();
+         if (GameClient.bClient) {
+             try {
+                 GameClient.instance.update();
+@@ -244,20 +248,26 @@
+         } catch (Throwable throwable) {
+             ExceptionLogger.logException(throwable);
+         }
++        OptiZombPerfLog.recordLogicNetworkTime(System.nanoTime() - _netStart);
+ 
++        long _inputStart = System.nanoTime();
++        long _steamStart = System.nanoTime();
+         SteamUtils.runLoop();
++        OptiZombPerfLog.recordLogicSteamTime(System.nanoTime() - _steamStart);
+         Mouse.update();
+         GameKeyboard.update();
+         GameInput.updateGameThread();
+         if (CoopMaster.instance != null) {
+             CoopMaster.instance.update();
+         }
++        OptiZombPerfLog.recordLogicInputTime(System.nanoTime() - _inputStart);
+ 
+         if (IsoPlayer.players[0] != null) {
+             IsoPlayer.setInstance(IsoPlayer.players[0]);
+             IsoCamera.CamCharacter = IsoPlayer.players[0];
+         }
+ 
++        long _uiUpdStart = System.nanoTime();
+         UIManager.update();
+         VoiceManager.instance.update();
+         LineDrawer.clear();
+@@ -279,14 +289,21 @@
+             }
+         }
+ 
++        long _sndMgrStart = System.nanoTime();
+         SoundManager.instance.Update();
++        OptiZombPerfLog.recordLogicSoundMgrTime(System.nanoTime() - _sndMgrStart);
++        OptiZombPerfLog.recordLogicUIUpdateTime(System.nanoTime() - _uiUpdStart);
++
+         boolean boolean0 = true;
+         if (GameTime.isGamePaused()) {
+             boolean0 = false;
+         }
+ 
++        long _preStatesStart = System.nanoTime();
+         MapCollisionData.instance.updateGameState();
+         Mouse.setCursorVisible(true);
++        OptiZombPerfLog.recordLogicPreStatesTime(System.nanoTime() - _preStatesStart);
++        long _statesStart = System.nanoTime();
+         if (boolean0) {
+             states.update();
+         } else {
+@@ -295,12 +312,15 @@
+                 LuaEventManager.triggerEvent("OnTickEvenPaused", 0.0);
+             }
+         }
++        OptiZombPerfLog.recordLogicStatesUpdateTime(System.nanoTime() - _statesStart);
+ 
++        long _postStatesStart = System.nanoTime();
+         UIManager.resize();
+         fileSystem.updateAsyncTransactions();
+         if (GameKeyboard.isKeyPressed(Core.getInstance().getKey("Take screenshot"))) {
+             Core.getInstance().TakeFullScreenshot(null);
+         }
++        OptiZombPerfLog.recordLogicPostStatesTime(System.nanoTime() - _postStatesStart);
+     }
+ 
+     public static void render() {
+@@ -310,10 +330,14 @@
+ 
+     protected static void renderInternal() {
+         if (!PerformanceSettings.LightingThread && LightingJNI.init && !LightingJNI.WaitingForMain()) {
++            long _ljniStart = System.nanoTime();
+             LightingJNI.DoLightingUpdateNew(System.nanoTime());
++            OptiZombPerfLog.recordLightingJNITime(System.nanoTime() - _ljniStart);
+         }
+ 
++        long _opStart = System.nanoTime();
+         IsoObjectPicker.Instance.StartRender();
++        OptiZombPerfLog.recordObjectPickerTime(System.nanoTime() - _opStart);
+         GameWindow.s_performance.statesRender.invokeAndMeasure(states, GameStateMachine::render);
+     }
+ 
+@@ -587,19 +611,33 @@
+     }
+ 
+     private static void frameStep() {
++        long _frameStart = System.nanoTime();
+         try {
++            OptiZombGPUProfiler.beginFrame(); // [OptiZomb] GPU phase profiler
+             IsoCamera.frameState.frameCount++;
+             GameWindow.s_performance.frameStep.start();
+             s_fpsTracking.frameStep();
++            long _logicStart = System.nanoTime();
+             GameWindow.s_performance.logic.invokeAndMeasure(GameWindow::logic);
++            OptiZombPerfLog.recordLogicTime(System.nanoTime() - _logicStart);
+             Core.getInstance().setScreenSize(RenderThread.getDisplayWidth(), RenderThread.getDisplayHeight());
++            long _renderStart = System.nanoTime();
+             renderInternal();
++            OptiZombPerfLog.recordStatesRenderTime(System.nanoTime() - _renderStart);
++            long _ortStart = System.nanoTime();
+             if (doRenderEvent) {
++                OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_LUA_RENDER);
+                 LuaEventManager.triggerEvent("OnRenderTick");
++                OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_LUA_RENDER);
+             }
++            OptiZombPerfLog.recordOnRenderTickTime(System.nanoTime() - _ortStart);
+ 
++            long _frameReadyStart = System.nanoTime();
+             Core.getInstance().DoFrameReady();
++            OptiZombPerfLog.recordDoFrameReadyTime(System.nanoTime() - _frameReadyStart);
++            long _lightStart = System.nanoTime();
+             LightingThread.instance.update();
++            OptiZombPerfLog.recordLightingTime(System.nanoTime() - _lightStart);
+             if (Core.bDebug) {
+                 if (GameKeyboard.isKeyDown(Core.getInstance().getKey("Toggle Lua Debugger"))) {
+                     if (!bLuaDebuggerKeyDown) {
+@@ -628,6 +666,12 @@
+             ExceptionLogger.logException(exception);
+         } finally {
+             GameWindow.s_performance.frameStep.end();
++            OptiZombPerfLog.recordFrameStepTime(System.nanoTime() - _frameStart);
++            OptiZombPerfLog.endFrame();
++            OptiZombGLFix.reportIfNeeded();
++            zombie.optizomb.OptiZombBoneTBOLog.reportIfNeeded();
++            zombie.optizomb.OptiZombTilesChars.reportIfNeeded();
++            zombie.optizomb.OptiZombBatchMerge.reportIfNeeded();
+         }
+     }
+ 

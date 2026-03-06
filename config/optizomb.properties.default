@@ -1,0 +1,42 @@
+# OptiZomb Lite v0.1 — Feature Flags
+# Set any option to false to disable that optimization group.
+# Dependencies: opt.glchars requires opt.glfix, opt.bonetbo requires opt.glchars.
+
+# Core rendering
+opt.glfix=true
+opt.glchars=true
+opt.bonetbo=true
+opt.tileschars=true
+opt.batchmerge=true
+
+# Floor rendering
+opt.floorpipeline=true
+opt.floorfbo=true
+
+# Environment rendering
+opt.blood=true
+opt.shadows=true
+opt.fog=true
+
+# Scene management
+opt.scenecull=true
+opt.bonelod=true
+opt.cutaway=true
+
+# Items & containers
+opt.items=true
+
+# Visual fixes
+opt.terrain=true
+opt.zoom=true
+
+# Throttles
+opt.separatethrottle=true
+opt.aithrottle=true
+
+# Diagnostics
+opt.diagnostics=true
+opt.startframe=true
+
+# Zombie render cap (vanilla = 510, OptiZomb default = 4096)
+# opt.zombiecap=4096

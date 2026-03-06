@@ -1,0 +1,162 @@
+--- vanilla/zombie/core/skinnedmodel/model/Model.java	2026-03-05 19:03:50.874786411 +0000
++++ src/zombie/core/skinnedmodel/model/Model.java	2026-03-06 01:44:34.284298236 +0000
+@@ -29,6 +29,10 @@
+ import zombie.iso.IsoLightSource;
+ import zombie.iso.Vector3;
+ import zombie.iso.sprite.SkyBox;
++import zombie.optizomb.OptiZombBoneTBO;
++import zombie.optizomb.OptiZombBoneTBOLog;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombGLFix;
+ import zombie.scripting.objects.ModelAttachment;
+ import zombie.util.Lambda;
+ import zombie.util.StringUtils;
+@@ -39,6 +43,7 @@
+     public String Name;
+     public final ModelMesh Mesh;
+     public Shader Effect;
++    private Shader EffectTBO;
+     public Object Tag;
+     public boolean bStatic = false;
+     public Texture tex = null;
+@@ -194,14 +199,41 @@
+                         this.CreateShader("basicEffect");
+                     }
+ 
+-                    Shader shader0 = this.Effect;
+-                    GL11.glEnable(2884);
+-                    GL11.glCullFace(1028);
+-                    GL11.glEnable(2929);
+-                    GL11.glEnable(3008);
+-                    GL11.glDepthFunc(513);
+-                    GL11.glAlphaFunc(516, 0.01F);
+-                    GL11.glBlendFunc(770, 771);
++                    // BONE_TBO: use TBO shader variant when bone data is in SSBO
++                    Shader shader0;
++                    boolean useTBO = OptiZombConfig.BONE_TBO && OptiZombBoneTBO.instance.isReady();
++                    if (useTBO) {
++                        if (this.EffectTBO == null) {
++                            this.EffectTBO = ShaderManager.instance.getOrCreateShader("basicEffect_tbo", this.bStatic);
++                        }
++                        if (!this.EffectTBO.isTBOReady()) {
++                            useTBO = false;
++                        }
++                    }
++                    if (useTBO) {
++                        // BONE_TBO: always append bone data during rendering to ensure
++                        // it lands in the current frame's SSBO (offsets go stale each frame)
++                        if (modelInstanceRenderData.matrixPalette != null) {
++                            modelInstanceRenderData.matrixPalette.position(0);
++                            int boneCount = modelInstanceRenderData.matrixPalette.remaining() / 16;
++                            modelInstanceRenderData.boneTexelOffset = OptiZombBoneTBO.instance.appendBoneData(
++                                modelInstanceRenderData.matrixPalette, boneCount);
++                            modelInstanceRenderData.matrixPalette.position(0);
++                        }
++                        shader0 = this.EffectTBO;
++                        OptiZombBoneTBO.instance.uploadAndBind();
++                    } else {
++                        shader0 = this.Effect;
++                    }
++                    if (!OptiZombConfig.GL_CHARS) {
++                        GL11.glEnable(2884);
++                        GL11.glCullFace(1028);
++                        GL11.glEnable(2929);
++                        GL11.glEnable(3008);
++                        GL11.glDepthFunc(513);
++                        GL11.glAlphaFunc(516, 0.01F);
++                        GL11.glBlendFunc(770, 771);
++                    }
+                     if (Core.bDebug && DebugOptions.instance.ModelRenderWireframe.getValue()) {
+                         GL11.glPolygonMode(1032, 6913);
+                         GL11.glEnable(2848);
+@@ -223,16 +255,31 @@
+                         GL11.glDisable(2848);
+                     } else {
+                         if (shader0 != null) {
+-                            shader0.Start();
++                            if (OptiZombConfig.GL_CHARS) {
++                                shader0.StartIfNeeded();
++                            } else {
++                                shader0.Start();
++                            }
+                             shader0.startCharacter(modelSlotRenderData, modelInstanceRenderData);
+                         }
+ 
+                         if (!DebugOptions.instance.DebugDraw_SkipDrawNonSkinnedModel.getValue()) {
+-                            GameProfiler.getInstance().invokeAndMeasure("Mesh.Draw.Call", shader0, this.Mesh, (shader, modelMesh) -> modelMesh.Draw(shader));
++                            if (OptiZombConfig.GL_CHARS) {
++                                this.Mesh.Draw(shader0);
++                            } else {
++                                GameProfiler.getInstance().invokeAndMeasure("Mesh.Draw.Call", shader0, this.Mesh, (shader, modelMesh) -> modelMesh.Draw(shader));
++                            }
+                         }
+ 
+-                        if (shader0 != null) {
+-                            shader0.End();
++                        // BONE_TBO: unbind SSBO after draw
++                        if (useTBO) {
++                            OptiZombBoneTBO.instance.unbind();
++                        }
++
++                        if (!OptiZombConfig.GL_CHARS) {
++                            if (shader0 != null) {
++                                shader0.End();
++                            }
+                         }
+ 
+                         this.drawMuzzleFlash(modelInstanceRenderData);
+@@ -434,53 +481,7 @@
+                             vehicleModelInstance = Type.tryCastTo(modelInstance.parent, VehicleModelInstance.class);
+                         }
+ 
+-                        shader.setTexture(vehicleModelInstance.tex, "Texture0", 0);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureRust, "TextureRust", 1);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureMask, "TextureMask", 2);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureLights, "TextureLights", 3);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage1Overlay, "TextureDamage1Overlay", 4);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage1Shell, "TextureDamage1Shell", 5);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage2Overlay, "TextureDamage2Overlay", 6);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage2Shell, "TextureDamage2Shell", 7);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-
+-                        try {
+-                            if (Core.getInstance().getPerfReflectionsOnLoad()) {
+-                                shader.setTexture((Texture)SkyBox.getInstance().getTextureCurrent(), "TextureReflectionA", 8);
+-                                GL11.glTexEnvi(8960, 8704, 7681);
+-                                GL11.glGetError();
+-                            }
+-                        } catch (Throwable throwable0) {
+-                        }
+-
+-                        try {
+-                            if (Core.getInstance().getPerfReflectionsOnLoad()) {
+-                                shader.setTexture((Texture)SkyBox.getInstance().getTexturePrev(), "TextureReflectionB", 9);
+-                                GL11.glTexEnvi(8960, 8704, 7681);
+-                                GL11.glGetError();
+-                            }
+-                        } catch (Throwable throwable1) {
+-                        }
+-
+-                        shader.setReflectionParam(SkyBox.getInstance().getTextureShift(), vehicleModelInstance.refWindows, vehicleModelInstance.refBody);
+-                        shader.setTextureUninstall1(vehicleModelInstance.textureUninstall1);
+-                        shader.setTextureUninstall2(vehicleModelInstance.textureUninstall2);
+-                        shader.setTextureLightsEnables1(vehicleModelInstance.textureLightsEnables1);
+-                        shader.setTextureLightsEnables2(vehicleModelInstance.textureLightsEnables2);
+-                        shader.setTextureDamage1Enables1(vehicleModelInstance.textureDamage1Enables1);
+-                        shader.setTextureDamage1Enables2(vehicleModelInstance.textureDamage1Enables2);
+-                        shader.setTextureDamage2Enables1(vehicleModelInstance.textureDamage2Enables1);
+-                        shader.setTextureDamage2Enables2(vehicleModelInstance.textureDamage2Enables2);
+-                        shader.setMatrixBlood1(vehicleModelInstance.matrixBlood1Enables1, vehicleModelInstance.matrixBlood1Enables2);
+-                        shader.setMatrixBlood2(vehicleModelInstance.matrixBlood2Enables1, vehicleModelInstance.matrixBlood2Enables2);
+-                        shader.setTextureRustA(vehicleModelInstance.textureRustA);
++                        OptiZombGLFix.setupVehicleTextures(shader, vehicleModelInstance);
+                         shader.setTexturePainColor(vehicleModelInstance.painColor, modelSlotRenderData.alpha);
+                         if (this.bStatic) {
+                             shader.setTransformMatrix(IDENTITY, false);

@@ -1,0 +1,82 @@
+--- vanilla/zombie/iso/IsoCell.java	2026-03-05 19:03:40.901817730 +0000
++++ src/zombie/iso/IsoCell.java	2026-03-05 23:42:02.296647695 +0000
+@@ -1,6 +1,7 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.iso;
+ 
++import zombie.optizomb.OptiZombGPUProfiler;
+ import java.awt.Rectangle;
+ import java.io.BufferedInputStream;
+ import java.io.BufferedOutputStream;
+@@ -525,6 +526,10 @@
+     }
+ 
+     private void renderTilesInternal(int int1) {
++        // BONE_TBO: reset bone SSBO write cursor before any character rendering
++        if (zombie.optizomb.OptiZombConfig.BONE_TBO) {
++            zombie.optizomb.OptiZombBoneTBO.instance.beginFrame();
++        }
+         if (DebugOptions.instance.Terrain.RenderTiles.Enable.getValue()) {
+             if (m_floorRenderShader == null) {
+                 RenderThread.invokeOnRenderContext(this::initTileShaders);
+@@ -578,12 +583,14 @@
+             ShadedFloor.clear();
+             SolidFloor.clear();
+             VegetationCorpses.clear();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_DEBUG_CELL);
+             IsoCell.s_performance.renderTiles.renderDebugPhysics.start();
+             this.renderDebugPhysics(int0);
+             IsoCell.s_performance.renderTiles.renderDebugPhysics.end();
+             IsoCell.s_performance.renderTiles.renderDebugLighting.start();
+             this.renderDebugLighting(perPlayerRenderx, (int)int1);
+             IsoCell.s_performance.renderTiles.renderDebugLighting.end();
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_DEBUG_CELL);
+         }
+     }
+ 
+@@ -598,6 +605,11 @@
+         }
+ 
+         m_wallRenderShader = new Shader("wallTile");
++
++        // BONE_TBO: Initialize bone matrix SSBO (must happen on render context)
++        if (zombie.optizomb.OptiZombConfig.BONE_TBO) {
++            zombie.optizomb.OptiZombBoneTBO.instance.init();
++        }
+     }
+ 
+     private IsoCell.PerPlayerRender getPerPlayerRenderAt(int int0) {
+@@ -774,6 +786,7 @@
+         }
+ 
+         for (int int0 = 0; int0 < int1 + 1; int0++) {
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_FLOOR);
+             IsoCell.s_performance.renderTiles.PperformRenderTilesLayer pperformRenderTilesLayer = IsoCell.s_performance.renderTiles.performRenderTilesLayers
+                 .start(int0);
+             GridStack = gridStack.Squares.get(int0);
+@@ -862,6 +875,8 @@
+             }
+ 
+             pperformRenderTilesLayer.renderFloor.end();
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_FLOOR);
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
+             pperformRenderTilesLayer.renderPuddles.start();
+             IsoPuddles.getInstance().render(SolidFloor, int0);
+             pperformRenderTilesLayer.renderPuddles.end();
+@@ -904,6 +919,8 @@
+ 
+             IsoMarkers.instance.renderIsoMarkers(perPlayerRenderx, int0, int3);
+             IsoMarkers.instance.renderCircleIsoMarkers(perPlayerRenderx, int0, int3);
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_CHARS);
+             if (DebugOptions.instance.Terrain.RenderTiles.VegetationCorpses.getValue()) {
+                 pperformRenderTilesLayer.vegetationCorpses.start();
+ 
+@@ -948,6 +965,7 @@
+             IsoMarkers.instance.renderIsoMarkersDeferred(perPlayerRenderx, int0, int3);
+             ImprovedFog.endRender();
+             pperformRenderTilesLayer.end();
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_CHARS);
+         }
+     }
+ 

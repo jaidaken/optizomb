@@ -1,0 +1,114 @@
+--- vanilla/zombie/core/skinnedmodel/model/ModelSlotRenderData.java	2026-03-05 19:03:50.439787776 +0000
++++ src/zombie/core/skinnedmodel/model/ModelSlotRenderData.java	2026-03-05 23:42:21.393094897 +0000
+@@ -1,6 +1,8 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.core.skinnedmodel.model;
+ 
++import zombie.optizomb.OptiZombGLChars;
++import zombie.optizomb.OptiZombGPUProfiler;
+ import java.util.ArrayList;
+ import org.joml.Math;
+ import org.joml.Matrix4f;
+@@ -375,14 +377,12 @@
+     }
+ 
+     private void performRenderCharacter() {
+-        GL11.glPushClientAttrib(-1);
+-        GL11.glPushAttrib(1048575);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
+-        GL11.glEnable(2929);
+-        GL11.glDisable(3089);
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_CHARACTERS);
++        // BONE_TBO: ensure TBO is initialized on GL thread
++        if (zombie.optizomb.OptiZombConfig.BONE_TBO) {
++            zombie.optizomb.OptiZombBoneTBO.instance.ensureInit();
++        }
++        OptiZombGLChars.beginCharacterState();
+         ModelInstanceRenderDataList modelInstanceRenderDataList = this.modelData;
+         if (this.character != null && !this.bReady) {
+             modelInstanceRenderDataList = this.readyModelData;
+@@ -405,27 +405,13 @@
+         }
+ 
+         Model.CharacterModelCameraEnd();
+-        GL11.glPopAttrib();
+-        GL11.glPopClientAttrib();
+-        Texture.lastTextureID = -1;
+-        GL11.glEnable(3553);
+-        SpriteRenderer.ringBuffer.restoreVBOs = true;
+-        GL11.glDisable(2929);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
++        OptiZombGLChars.endCharacterState();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_CHARACTERS);
+     }
+ 
+     protected void performRenderCharacterOutline() {
+-        GL11.glPushClientAttrib(-1);
+-        GL11.glPushAttrib(1048575);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
+-        GL11.glEnable(2929);
+-        GL11.glDisable(3089);
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_CHAR_OUTLINE);
++        OptiZombGLChars.beginOutlineState();
+         ModelInstanceRenderDataList modelInstanceRenderDataList = this.modelData;
+         if (this.character != null && !this.bReady) {
+             modelInstanceRenderDataList = this.readyModelData;
+@@ -460,25 +446,13 @@
+ 
+         Model.CharacterModelCameraEnd();
+         ModelOutlines.instance.m_fboA.endDrawing();
+-        GL11.glPopAttrib();
+-        GL11.glPopClientAttrib();
+-        Texture.lastTextureID = -1;
+-        GL11.glEnable(3553);
+-        SpriteRenderer.ringBuffer.restoreVBOs = true;
+-        GL11.glDisable(2929);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
++        OptiZombGLChars.endOutlineState();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_CHAR_OUTLINE);
+     }
+ 
+     private void renderVehicle() {
+-        GL11.glPushClientAttrib(-1);
+-        GL11.glPushAttrib(1048575);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_VEHICLES);
++        OptiZombGLChars.beginVehicleState();
+         if (this.RENDER_TO_TEXTURE) {
+             GL11.glClear(256);
+         }
+@@ -504,17 +478,8 @@
+             ModelManager.instance.bitmap.endDrawing();
+         }
+ 
+-        GL11.glPopAttrib();
+-        GL11.glPopClientAttrib();
+-        Texture.lastTextureID = -1;
+-        GL11.glEnable(3553);
+-        SpriteRenderer.ringBuffer.restoreBoundTextures = true;
+-        SpriteRenderer.ringBuffer.restoreVBOs = true;
+-        GL11.glDisable(2929);
+-        GL11.glEnable(3042);
+-        GL11.glBlendFunc(770, 771);
+-        GL11.glEnable(3008);
+-        GL11.glAlphaFunc(516, 0.0F);
++        OptiZombGLChars.endVehicleState();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_VEHICLES);
+     }
+ 
+     private void doneWithTextureCreator(ModelInstanceTextureCreator modelInstanceTextureCreator) {

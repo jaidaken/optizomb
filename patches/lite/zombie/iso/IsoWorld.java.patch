@@ -1,0 +1,83 @@
+--- vanilla/zombie/iso/IsoWorld.java	2026-03-05 19:03:30.760849609 +0000
++++ src/zombie/iso/IsoWorld.java	2026-03-06 00:26:18.307903351 +0000
+@@ -1,6 +1,8 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.iso;
+ 
++import zombie.optizomb.OptiZombGPUProfiler;
++import zombie.optizomb.OptiZombPerfLog;
+ import fmod.fmod.FMODSoundEmitter;
+ import java.io.BufferedInputStream;
+ import java.io.DataInputStream;
+@@ -2142,7 +2144,7 @@
+         int int2 = 0;
+         int int3 = 0;
+         int int4 = 0;
+-        short short0 = 510;
++        short short0 = zombie.optizomb.OptiZombConfig.ZOMBIE_RENDER_CAP;
+         PerformanceSettings.AnimationSkip = 0;
+ 
+         for (int int5 = 0; int5 < this.zombieWithModel.size(); int5++) {
+@@ -2215,26 +2217,62 @@
+                 }
+ 
+                 try {
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WORLD_RENDER);
++                    long _preCellAtlasStart = System.nanoTime();
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WEATHER_INIT);
++                    long _pct = System.nanoTime();
+                     WeatherFxMask.initMask();
++                    OptiZombPerfLog.recordPreCellWeatherInitTime(System.nanoTime() - _pct);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WEATHER_INIT);
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_DEAD_BODY_ATLAS);
++                    _pct = System.nanoTime();
+                     DeadBodyAtlas.instance.render();
++                    OptiZombPerfLog.recordPreCellDeadBodyTime(System.nanoTime() - _pct);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_DEAD_BODY_ATLAS);
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WORLD_ITEM_ATLAS);
++                    _pct = System.nanoTime();
+                     WorldItemAtlas.instance.render();
++                    OptiZombPerfLog.recordPreCellWorldItemTime(System.nanoTime() - _pct);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WORLD_ITEM_ATLAS);
++                    OptiZombPerfLog.recordRenderPreCellTime(System.nanoTime() - _preCellAtlasStart);
++                    long _cellRenStart = System.nanoTime();
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_CELL_RENDER);
+                     this.CurrentCell.render();
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_CELL_RENDER);
++                    OptiZombPerfLog.recordCellRenderTime(System.nanoTime() - _cellRenStart);
++                    long _miscStart = System.nanoTime();
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WORLD_MISC);
++                    long _wmt = System.nanoTime();
+                     this.DrawIsoCursorHelper();
++                    OptiZombPerfLog.recordWorldRenCursorTime(System.nanoTime() - _wmt);
+                     DeadBodyAtlas.instance.renderDebug();
++                    _wmt = System.nanoTime();
+                     PolygonalMap2.instance.render();
++                    OptiZombPerfLog.recordWorldRenPolyMapTime(System.nanoTime() - _wmt);
++                    _wmt = System.nanoTime();
+                     WorldSoundManager.instance.render();
+                     WorldFlares.debugRender();
+                     WorldMarkers.instance.debugRender();
+                     ObjectAmbientEmitters.getInstance().render();
+                     ZombieVocalsManager.instance.render();
+                     LineDrawer.render();
++                    OptiZombPerfLog.recordWorldRenDebugTime(System.nanoTime() - _wmt);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WORLD_MISC);
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WEATHER);
+                     WeatherFxMask.renderFxMask(IsoCamera.frameState.playerIndex);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WEATHER);
+                     if (GameClient.bClient) {
++                        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_CLIENT_MAP);
+                         ClientServerMap.render(IsoCamera.frameState.playerIndex);
+                         PassengerMap.render(IsoCamera.frameState.playerIndex);
++                        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_CLIENT_MAP);
+                     }
+ 
++                    OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_SKYBOX);
+                     SkyBox.getInstance().render();
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_SKYBOX);
++                    OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WORLD_RENDER);
++                    OptiZombPerfLog.recordWorldRenderMiscTime(System.nanoTime() - _miscStart);
+                 } catch (Throwable throwable1) {
+                     ExceptionLogger.logException(throwable1);
+                 }

@@ -6,7 +6,6 @@ BUILD_DIR="$PROJECT_DIR/build"
 INSTALLER_SRC="$PROJECT_DIR/installer/src"
 INSTALLER_BUILD="$BUILD_DIR/installer"
 PATCHES_DIR="$BUILD_DIR/patches"
-SHADERS_DIR="$PROJECT_DIR/shaders"
 CONFIG_DIR="$PROJECT_DIR/config"
 OUTPUT_JAR="$BUILD_DIR/OptiZomb-Lite-Installer.jar"
 
@@ -20,6 +19,7 @@ PZ_GAME_DIR="/mnt/data/SteamLibrary/steamapps/common/ProjectZomboid/projectzombo
 # Tier (default: lite)
 TIER="${1:-lite}"
 PATCH_SRC_DIR="$PROJECT_DIR/patches/$TIER"
+SHADERS_DIR="$PATCH_SRC_DIR/resources/shaders"
 
 VERSION=$(cat "$PROJECT_DIR/version.txt" | tr -d '[:space:]')
 

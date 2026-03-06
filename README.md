@@ -1,31 +1,45 @@
 # OptiZomb
 
-Performance optimization mod for Project Zomboid.
+Performance optimization mod for Project Zomboid. 2.5-3x FPS improvement at 500+ zombies.
 
-## Quick Start
+## Install
 
-```bash
-# 1. Decompile vanilla (first time + after game updates)
-bash scripts/decompile.sh
+1. Download `OptiZomb-Lite-Installer.jar` from [Releases](https://github.com/jaidaken/optizomb/releases)
+2. Run: `java -jar OptiZomb-Lite-Installer.jar`
+3. The installer auto-detects your PZ install, or browse manually
+4. Click **Install**
 
-# 2. Apply patches to create source
-bash scripts/apply-patches.sh lite
+To uninstall, run the installer again and click **Uninstall**.
 
-# 3. Build
-bash scripts/build.sh
+## What It Does
 
-# 4. Build installer
-bash scripts/build-installer.sh
+20 toggleable client-only rendering optimizations — safe on any vanilla server. No gameplay or simulation changes.
 
-# 5. Install
-java -jar build/OptiZomb-Lite-Installer.jar
-```
+- GPU pipeline stall removal (glGetError bypass)
+- GL state caching (shader bind, VBO/EBO, camera)
+- Bone matrix TBO (per-zombie uniform upload → single GPU buffer)
+- Render flag bitmasks (cached instanceof checks)
+- Batch texture merging (fewer draw call breaks)
+- Floor tile instancing (GPU instanced rendering)
+- Floor FBO caching (skip unchanged frames)
+- Blood splat optimization (offscreen cull + color cache)
+- Shadow LOD + deferred rendering
+- Item container indexing (HashSet dedup, type index)
+- Scene cull + distance-based LOD
+- Bone LOD for distant zombies
+- Cutaway result caching
+- Fog row skip
+- Separation + AI throttling
 
-## Tiers
+## Configuration
 
-- **Lite** — Client-only rendering optimizations. Safe on vanilla servers.
-- **Full** — Lite + parallel zombie simulation. Requires client+server match.
+Edit `optizomb.properties` in your PZ directory to toggle individual optimizations. All are enabled by default.
+
+## Requirements
+
+- Project Zomboid (Steam)
+- Java 17+ (PZ ships its own JRE, or use any system JDK)
 
 ## Documentation
 
-See `docs/` for detailed optimization notes, benchmarks, and architecture.
+See [`docs/`](docs/) for optimization details, architecture, and safety audit.

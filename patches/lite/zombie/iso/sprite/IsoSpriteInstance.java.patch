@@ -1,0 +1,12 @@
+--- vanilla/zombie/iso/sprite/IsoSpriteInstance.java	2026-03-05 19:03:23.489872486 +0000
++++ src/zombie/iso/sprite/IsoSpriteInstance.java	2026-03-06 16:52:28.905219642 +0000
+@@ -135,6 +135,9 @@
+     public void update() {
+     }
+ 
++    /** OptiZomb: public wrapper for renderprep (cross-package access for direct floor render). */
++    public void prepAlpha(IsoObject object) { renderprep(object); }
++
+     protected void renderprep(IsoObject object) {
+         if (object != null && this.bCopyTargetAlpha) {
+             this.targetAlpha = object.getTargetAlpha(IsoCamera.frameState.playerIndex);

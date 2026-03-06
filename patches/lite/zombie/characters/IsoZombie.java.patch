@@ -1,0 +1,45 @@
+--- vanilla/zombie/characters/IsoZombie.java	2026-03-05 19:04:00.184757200 +0000
++++ src/zombie/characters/IsoZombie.java	2026-03-06 18:02:15.620883851 +0000
+@@ -212,6 +212,8 @@
+     public Object soundSourceTarget = null;
+     public float soundAttract = 0.0F;
+     public float soundAttractTimeout = 0.0F;
++    public float cachedCullScore = Float.MIN_VALUE;
++    public int cullRank = Integer.MAX_VALUE;
+     private final Vector2 hitAngle = new Vector2();
+     public boolean alerted = false;
+     private String walkType = null;
+@@ -2232,13 +2234,30 @@
+                                         this.setLastHeardSound(-1, -1, -1);
+                                     }
+ 
+-                                    if (this.TimeSinceSeenFlesh > 240.0F && this.timeSinceRespondToSound > 5.0F) {
++                                    boolean _aiThrottled = zombie.optizomb.OptiZombConfig.AI_THROTTLE
++                                        && zombie.optizomb.OptiZombAI.shouldSkipAI(this);
++                                    if (!_aiThrottled && this.TimeSinceSeenFlesh > 240.0F && this.timeSinceRespondToSound > 5.0F) {
+                                         this.RespondToSound();
+                                     }
+ 
+                                     this.timeSinceRespondToSound = this.timeSinceRespondToSound + GameTime.getInstance().getMultiplier() / 1.6F;
+-                                    this.separate();
+-                                    this.updateSearchForCorpse();
++                                    if (zombie.optizomb.OptiZombConfig.SEPARATE_THROTTLE
++                                        && zombie.optizomb.OptiZombSeparate.shouldSkipSeparate(this)) {
++                                        if (Core.bDebug) zombie.optizomb.OptiZombPerfLog.recordSeparateThrottle();
++                                    } else {
++                                        if (Core.bDebug) {
++                                            long _sepT = zombie.optizomb.OptiZombPerfLog.beginSeparate();
++                                            this.separate();
++                                            zombie.optizomb.OptiZombPerfLog.endSeparate(_sepT);
++                                        } else {
++                                            this.separate();
++                                        }
++                                    }
++                                    if (!_aiThrottled) {
++                                        this.updateSearchForCorpse();
++                                    } else {
++                                        if (Core.bDebug) zombie.optizomb.OptiZombPerfLog.recordAiThrottle();
++                                    }
+                                     if (this.TimeSinceSeenFlesh > 2000.0F && this.timeSinceRespondToSound > 2000.0F) {
+                                         ZombieGroupManager.instance.update(this);
+                                     }

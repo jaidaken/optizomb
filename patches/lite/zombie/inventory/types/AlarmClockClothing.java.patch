@@ -1,0 +1,15 @@
+--- vanilla/zombie/inventory/types/AlarmClockClothing.java	2026-03-05 19:03:42.301813332 +0000
++++ src/zombie/inventory/types/AlarmClockClothing.java	2026-03-06 14:30:55.981892722 +0000
+@@ -192,6 +192,12 @@
+         return this.ringSince >= 0.0;
+     }
+ 
++    // Opt ITEMS: skip processItems for alarm clock clothing with no alarm set
++    @Override
++    public boolean needsProcessing() {
++        return this.alarmSet || super.needsProcessing();
++    }
++
+     @Override
+     public boolean finishupdate() {
+         return !this.alarmSet;

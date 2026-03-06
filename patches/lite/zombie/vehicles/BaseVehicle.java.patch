@@ -1,0 +1,65 @@
+--- vanilla/zombie/vehicles/BaseVehicle.java	2026-03-05 19:03:05.436929362 +0000
++++ src/zombie/vehicles/BaseVehicle.java	2026-03-06 02:27:16.419597061 +0000
+@@ -1,6 +1,8 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.vehicles;
+ 
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombShadows;
+ import fmod.fmod.FMODManager;
+ import fmod.fmod.FMODSoundEmitter;
+ import fmod.fmod.FMOD_STUDIO_PARAMETER_DESCRIPTION;
+@@ -5370,22 +5372,37 @@
+                             this.getPoly();
+                         }
+ 
+-                        SpriteRenderer.instance
+-                            .renderPoly(
+-                                texture,
+-                                (int)IsoUtils.XToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0),
+-                                (int)IsoUtils.YToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0),
+-                                (int)IsoUtils.XToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0),
+-                                (int)IsoUtils.YToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0),
+-                                (int)IsoUtils.XToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0),
+-                                (int)IsoUtils.YToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0),
+-                                (int)IsoUtils.XToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0),
+-                                (int)IsoUtils.YToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0),
+-                                1.0F,
+-                                1.0F,
+-                                1.0F,
+-                                0.8F * float0
+-                            );
++                        if (OptiZombConfig.SHADOWS) {
++                            OptiZombShadows.DeferredShadow ds = OptiZombShadows.allocShadow();
++                            ds.texture = texture;
++                            ds.x1 = (int)IsoUtils.XToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0);
++                            ds.y1 = (int)IsoUtils.YToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0);
++                            ds.x2 = (int)IsoUtils.XToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0);
++                            ds.y2 = (int)IsoUtils.YToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0);
++                            ds.x3 = (int)IsoUtils.XToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0);
++                            ds.y3 = (int)IsoUtils.YToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0);
++                            ds.x4 = (int)IsoUtils.XToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0);
++                            ds.y4 = (int)IsoUtils.YToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0);
++                            ds.r = 1.0F; ds.g = 1.0F; ds.b = 1.0F; ds.a = 0.8F * float0;
++                            OptiZombShadows.addDeferredShadow(ds);
++                        } else {
++                            SpriteRenderer.instance
++                                .renderPoly(
++                                    texture,
++                                    (int)IsoUtils.XToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0),
++                                    (int)IsoUtils.YToScreenExact(this.shadowCoord.x2, this.shadowCoord.y2, 0.0F, 0),
++                                    (int)IsoUtils.XToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0),
++                                    (int)IsoUtils.YToScreenExact(this.shadowCoord.x1, this.shadowCoord.y1, 0.0F, 0),
++                                    (int)IsoUtils.XToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0),
++                                    (int)IsoUtils.YToScreenExact(this.shadowCoord.x4, this.shadowCoord.y4, 0.0F, 0),
++                                    (int)IsoUtils.XToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0),
++                                    (int)IsoUtils.YToScreenExact(this.shadowCoord.x3, this.shadowCoord.y3, 0.0F, 0),
++                                    1.0F,
++                                    1.0F,
++                                    1.0F,
++                                    0.8F * float0
++                                );
++                        }
+                     }
+                 }
+             }

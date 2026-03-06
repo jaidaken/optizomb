@@ -14,7 +14,7 @@ import zombie.debug.DebugLog;
  */
 public final class OptiZombConfig {
 
-    public static final String VERSION = "0.1.0"; // injected by build.sh from version.txt
+    public static final String VERSION = "0.1.0";
 
     private static final Properties props = new Properties();
     private static final String configSource;
@@ -82,8 +82,8 @@ public final class OptiZombConfig {
     /** Group 6: Floor tile rendering pipeline */
     public static final boolean FLOOR_PIPELINE = resolve("opt.floorpipeline", true);
 
-    /** Group 7: Floor FBO dirty-rect caching */
-    public static final boolean FLOOR_FBO = resolve("opt.floorfbo", true);
+    /** Group 7: Floor FBO caching (disabled: camera float jitter prevents cache hits) */
+    public static final boolean FLOOR_FBO = resolve("opt.floorfbo", false);
 
     /** Group 9: Blood splat rendering optimization */
     public static final boolean BLOOD = resolve("opt.blood", true);
@@ -103,15 +103,24 @@ public final class OptiZombConfig {
     /** Group 14: Zoom-level FBO optimization */
     public static final boolean ZOOM = resolve("opt.zoom", true);
 
-    /** Group 15: Instanced sprite batching */
-    public static final boolean SPRITE_BATCH = resolve("opt.spritebatch", true);
-
     /** Scene culling + bone LOD */
     public static final boolean SCENE_CULL = resolve("opt.scenecull", true);
     public static final boolean BONE_LOD = resolve("opt.bonelod", true);
 
     /** Cutaway frame-stamp caching */
     public static final boolean CUTAWAY = resolve("opt.cutaway", true);
+
+    /** StartFrame sub-phase profiling */
+    public static final boolean STARTFRAME = resolve("opt.startframe", true);
+
+    /** Fog rendering optimization */
+    public static final boolean FOG = resolve("opt.fog", true);
+
+    /** Separation throttle (skip separate() for distant zombies) */
+    public static final boolean SEPARATE_THROTTLE = resolve("opt.separatethrottle", true);
+
+    /** AI throttle (skip RespondToSound/updateSearchForCorpse for distant zombies) */
+    public static final boolean AI_THROTTLE = resolve("opt.aithrottle", true);
 
     /** Zombie render cap (vanilla = 510, OptiZomb default = 4096) */
     public static final short ZOMBIE_RENDER_CAP = resolveShort("opt.zombiecap", (short)4096);
@@ -123,12 +132,26 @@ public final class OptiZombConfig {
         } else {
             DebugLog.General.println("[OptiZomb] Config loaded from: " + configSource);
         }
-        DebugLog.General.println("[OptiZomb] v" + VERSION + " — Resolved feature flags:");
+        DebugLog.General.println("[OptiZomb] v0.4.0 — Resolved feature flags:");
         DebugLog.General.println("[OptiZomb]   GL_FIX          = " + GL_FIX);
         DebugLog.General.println("[OptiZomb]   GL_CHARS         = " + GL_CHARS);
         DebugLog.General.println("[OptiZomb]   BONE_TBO         = " + BONE_TBO);
         DebugLog.General.println("[OptiZomb]   TILES_CHARS      = " + TILES_CHARS);
         DebugLog.General.println("[OptiZomb]   BATCH_MERGE      = " + BATCH_MERGE);
+        DebugLog.General.println("[OptiZomb]   BLOOD            = " + BLOOD);
+        DebugLog.General.println("[OptiZomb]   SHADOWS          = " + SHADOWS);
+        DebugLog.General.println("[OptiZomb]   ITEMS            = " + ITEMS);
+        DebugLog.General.println("[OptiZomb]   FLOOR_PIPELINE   = " + FLOOR_PIPELINE);
+        DebugLog.General.println("[OptiZomb]   FLOOR_FBO        = " + FLOOR_FBO);
+        DebugLog.General.println("[OptiZomb]   SCENE_CULL       = " + SCENE_CULL);
+        DebugLog.General.println("[OptiZomb]   BONE_LOD         = " + BONE_LOD);
+        DebugLog.General.println("[OptiZomb]   TERRAIN          = " + TERRAIN);
+        DebugLog.General.println("[OptiZomb]   ZOOM             = " + ZOOM);
+        DebugLog.General.println("[OptiZomb]   CUTAWAY          = " + CUTAWAY);
+        DebugLog.General.println("[OptiZomb]   STARTFRAME       = " + STARTFRAME);
+        DebugLog.General.println("[OptiZomb]   FOG              = " + FOG);
+        DebugLog.General.println("[OptiZomb]   SEPARATE_THROTTLE= " + SEPARATE_THROTTLE);
+        DebugLog.General.println("[OptiZomb]   AI_THROTTLE      = " + AI_THROTTLE);
         DebugLog.General.println("[OptiZomb]   DIAGNOSTICS      = " + DIAGNOSTICS);
         DebugLog.General.println("[OptiZomb]   ZOMBIE_RENDER_CAP= " + ZOMBIE_RENDER_CAP);
     }

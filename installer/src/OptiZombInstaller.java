@@ -66,10 +66,9 @@ public class OptiZombInstaller extends JFrame {
         }
     }
 
-    // Private constructor for CLI mode — no GUI
+    // Private constructor for CLI mode
     private OptiZombInstaller(boolean headless) {
         super();
-        // No GUI construction
     }
 
     private void buildUI() {
@@ -816,14 +815,10 @@ public class OptiZombInstaller extends JFrame {
         if (Files.isRegularFile(manifest)) {
             shaderNames = Files.readAllLines(manifest);
         } else {
-            // Fallback: hardcoded list for installations done before manifest was added
+            // Fallback: only shaders OptiZomb actually installs (never vanilla files)
             shaderNames = Arrays.asList(
-                "spriteInstanced.vert", "spriteInstanced.frag",
-                "floorTileInstanced.vert", "floorTileInstanced.frag",
                 "basicEffect_tbo.vert", "basicEffect_tbo.frag",
-                "basicEffect_static.vert", "basicEffect_tbo_static.vert",
-                "basicEffect.vert", "basicEffect.frag",
-                "floorTile.vert", "floorTile.frag"
+                "basicEffect_tbo_static.vert"
             );
         }
 

@@ -1,0 +1,15 @@
+--- vanilla/zombie/inventory/InventoryItem.java	2026-03-05 19:03:44.033807891 +0000
++++ src/zombie/inventory/InventoryItem.java	2026-03-06 02:46:51.734002702 +0000
+@@ -806,6 +806,12 @@
+         }
+     }
+ 
++    // Opt 28g: fast filter for addItemsToProcessItems — most items don't need processing
++    public boolean needsProcessing() {
++        return this.isWet()
++            || (!GameClient.bClient && this.canStoreWater() && this.hasReplaceType("WaterSource"));
++    }
++
+     public boolean shouldUpdateInWorld() {
+         if (!GameClient.bClient && !this.rainFactorZero && this.canStoreWater() && this.hasReplaceType("WaterSource")) {
+             IsoGridSquare square = this.getWorldItem().getSquare();

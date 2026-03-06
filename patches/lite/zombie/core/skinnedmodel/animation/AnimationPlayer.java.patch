@@ -1,0 +1,23 @@
+--- vanilla/zombie/core/skinnedmodel/animation/AnimationPlayer.java	2026-03-05 19:03:51.509784417 +0000
++++ src/zombie/core/skinnedmodel/animation/AnimationPlayer.java	2026-03-06 13:04:48.979739740 +0000
+@@ -58,6 +58,8 @@
+     public float angleStepDelta = 1.0F;
+     public float angleTwistDelta = 1.0F;
+     public boolean bDoBlending = true;
++    // Opt BONE_LOD: 0=full, 1=skip fingers/toes, 2=core skeleton only
++    public int boneLOD = 0;
+     public boolean bUpdateBones = true;
+     private final Vector2 m_lastSetDir = new Vector2();
+     private final ArrayList<AnimationBoneBindingPair> m_reparentedBoneBindings = new ArrayList<>();
+@@ -664,6 +666,11 @@
+ 
+             for (int int1 = 0; int1 < this.m_boneTransforms.length; int1++) {
+                 if (!this.isBoneReparented(int1)) {
++                    if (zombie.optizomb.OptiZombConfig.BONE_LOD && this.boneLOD > 0
++                            && zombie.optizomb.OptiZombSceneCull.isBoneSkippable(this.m_skinningData, int1, this.boneLOD)) {
++                        zombie.optizomb.OptiZombSceneCull.recordBoneSkip();
++                        continue;
++                    }
+                     this.updateBoneAnimationTransform(int1, null);
+                 }
+             }

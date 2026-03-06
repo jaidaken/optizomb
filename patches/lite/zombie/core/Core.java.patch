@@ -1,0 +1,45 @@
+--- vanilla/zombie/core/Core.java	2026-03-05 19:03:56.532768655 +0000
++++ src/zombie/core/Core.java	2026-03-06 16:02:27.724704830 +0000
+@@ -2046,18 +2046,31 @@
+ 
+     public void StartFrame(int int0, boolean boolean0) {
+         if (!LuaManager.thread.bStep) {
++            long _sfT = zombie.optizomb.OptiZombConfig.STARTFRAME ? System.nanoTime() : 0;
+             this.OffscreenBuffer.update();
+             if (this.RenderShader != null && this.OffscreenBuffer.Current != null) {
+                 this.RenderShader.setTexture(this.OffscreenBuffer.getTexture(int0));
+             }
++            if (zombie.optizomb.OptiZombConfig.STARTFRAME) {
++                zombie.optizomb.OptiZombStartFrame.recordOffscreenBuf(System.nanoTime() - _sfT);
++                _sfT = System.nanoTime();
++            }
+ 
+             if (boolean0) {
+                 SpriteRenderer.instance.prePopulating();
+             }
++            if (zombie.optizomb.OptiZombConfig.STARTFRAME) {
++                zombie.optizomb.OptiZombStartFrame.recordPrePop(System.nanoTime() - _sfT);
++                _sfT = System.nanoTime();
++            }
+ 
+             if (!boolean0) {
+                 SpriteRenderer.instance.initFromIsoCamera(int0);
+             }
++            if (zombie.optizomb.OptiZombConfig.STARTFRAME) {
++                zombie.optizomb.OptiZombStartFrame.recordInitCam(System.nanoTime() - _sfT);
++                _sfT = System.nanoTime();
++            }
+ 
+             Texture.BindCount = 0;
+             IndieGL.glLoadIdentity();
+@@ -2067,6 +2080,10 @@
+ 
+             IndieGL.glDoStartFrame(this.getScreenWidth(), this.getScreenHeight(), this.getZoom(int0), int0);
+             IndieGL.glClear(17664);
++            if (zombie.optizomb.OptiZombConfig.STARTFRAME) {
++                zombie.optizomb.OptiZombStartFrame.recordGlCommands(System.nanoTime() - _sfT);
++                zombie.optizomb.OptiZombStartFrame.recordFrame();
++            }
+             if (DebugOptions.instance.Terrain.RenderTiles.HighContrastBg.getValue()) {
+                 SpriteRenderer.instance.glClearColor(255, 0, 255, 255);
+                 SpriteRenderer.instance.glClear(16384);

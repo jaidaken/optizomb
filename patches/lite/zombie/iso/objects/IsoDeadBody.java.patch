@@ -1,0 +1,39 @@
+--- vanilla/zombie/iso/objects/IsoDeadBody.java	2026-03-05 19:03:26.407863304 +0000
++++ src/zombie/iso/objects/IsoDeadBody.java	2026-03-06 12:42:20.085576182 +0000
+@@ -1,6 +1,8 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.iso.objects;
+ 
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombShadows;
+ import java.io.IOException;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+@@ -173,6 +175,7 @@
+             }
+ 
+             square0.getStaticMovingObjects().add(this);
++            if (OptiZombConfig.FLOOR_PIPELINE) square0.staticBucketDirty = true;
+             if (character instanceof IsoSurvivor) {
+                 IsoWorld.instance.TotalSurvivorNights = IsoWorld.instance.TotalSurvivorNights + ((IsoSurvivor)character).nightsSurvived;
+                 IsoWorld.instance.TotalSurvivorsDead++;
+@@ -814,7 +817,18 @@
+             DropShadow = Texture.getSharedTexture("media/textures/NewShadow.png");
+         }
+ 
+-        SpriteRenderer.instance.renderPoly(DropShadow, float19, float21, float22, float23, float24, float25, float26, float27, 0.0F, 0.0F, 0.0F, float0);
++        if (OptiZombConfig.SHADOWS) {
++            OptiZombShadows.DeferredShadow ds = OptiZombShadows.allocShadow();
++            ds.texture = DropShadow;
++            ds.x1 = float19; ds.y1 = float21;
++            ds.x2 = float22; ds.y2 = float23;
++            ds.x3 = float24; ds.y3 = float25;
++            ds.x4 = float26; ds.y4 = float27;
++            ds.r = 0.0F; ds.g = 0.0F; ds.b = 0.0F; ds.a = float0;
++            OptiZombShadows.addDeferredShadow(ds);
++        } else {
++            SpriteRenderer.instance.renderPoly(DropShadow, float19, float21, float22, float23, float24, float25, float26, float27, 0.0F, 0.0F, 0.0F, float0);
++        }
+         if (DebugOptions.instance.IsoSprite.DropShadowEdges.getValue()) {
+             LineDrawer.addLine(float11, float17, float20, float12, float18, float20, 1, 1, 1, null);
+             LineDrawer.addLine(float12, float18, float20, float14, float16, float20, 1, 1, 1, null);

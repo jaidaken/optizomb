@@ -1,0 +1,23 @@
+--- vanilla/zombie/iso/IsoMarkers.java	2026-03-05 19:03:33.252841773 +0000
++++ src/zombie/iso/IsoMarkers.java	2026-03-06 12:12:24.348422263 +0000
+@@ -10,6 +10,7 @@
+ import zombie.core.textures.Texture;
+ import zombie.debug.LineDrawer;
+ import zombie.network.GameServer;
++import zombie.optizomb.OptiZombConfig;
+ import zombie.util.Type;
+ 
+ public final class IsoMarkers {
+@@ -580,10 +581,12 @@
+ 
+         public void addTempSquareObject(IsoObject object) {
+             this.square.localTemporaryObjects.add(object);
++            if (OptiZombConfig.FLOOR_PIPELINE) this.square.staticBucketDirty = true;
+         }
+ 
+         public void removeTempSquareObjects() {
+             this.square.localTemporaryObjects.clear();
++            if (OptiZombConfig.FLOOR_PIPELINE) this.square.staticBucketDirty = true;
+         }
+ 
+         public float getX() {

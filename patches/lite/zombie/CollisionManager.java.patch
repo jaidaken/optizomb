@@ -1,0 +1,14 @@
+--- vanilla/zombie/CollisionManager.java	2026-03-05 19:04:15.582708946 +0000
++++ src/zombie/CollisionManager.java	2026-03-06 18:02:49.636759824 +0000
+@@ -317,7 +317,11 @@
+ 
+         ArrayList arrayList3 = IsoWorld.instance.CurrentCell.getObjectList();
+         int int13 = arrayList3.size();
++        long _postUpdStart = zombie.core.Core.bDebug ? System.nanoTime() : 0;
+         MovingObjectUpdateScheduler.instance.postupdate();
++        if (zombie.core.Core.bDebug) {
++            zombie.optizomb.OptiZombPerfLog.recordPostupdateTime(System.nanoTime() - _postUpdStart);
++        }
+         IsoMovingObject.treeSoundMgr.update();
+         ZombieFootstepManager.instance.update();
+         ZombieThumpManager.instance.update();

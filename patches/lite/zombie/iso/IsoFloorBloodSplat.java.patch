@@ -1,0 +1,17 @@
+--- vanilla/zombie/iso/IsoFloorBloodSplat.java	2026-03-05 19:03:37.407828711 +0000
++++ src/zombie/iso/IsoFloorBloodSplat.java	2026-03-06 02:11:16.891657840 +0000
+@@ -40,7 +40,13 @@
+     public float worldAge;
+     public int index;
+     public int fade;
+-    IsoChunk chunk;
++    public IsoChunk chunk;
++
++    // Opt 27d Phase C: cached per-splat color hash (depends only on x, y, Type — immutable after creation)
++    // NaN sentinel = not yet computed. Transient — render-only, not saved/loaded.
++    public float cachedR = Float.NaN;
++    public float cachedG;
++    public float cachedB;
+ 
+     public IsoFloorBloodSplat() {
+     }

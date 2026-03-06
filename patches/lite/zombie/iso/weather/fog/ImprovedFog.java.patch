@@ -1,0 +1,93 @@
+--- vanilla/zombie/iso/weather/fog/ImprovedFog.java	2026-03-05 19:03:21.394879081 +0000
++++ src/zombie/iso/weather/fog/ImprovedFog.java	2026-03-06 16:19:04.294483682 +0000
+@@ -346,6 +346,7 @@
+                 drawingThisLayer = false;
+             } else {
+                 playerRow = (int)player.getX() + (int)player.getY();
++                if (zombie.optizomb.OptiZombConfig.FOG) zombie.optizomb.OptiZombFog.startLayer(playerRow);
+                 ZOOM = Core.getInstance().getZoom(int1);
+                 zLayer = int0;
+                 PlayerIndex = int1;
+@@ -426,6 +427,7 @@
+             if (lastRow < 0 || lastRow != int0) {
+                 Vector2i vector2i = rectangleMatrixPos;
+ 
++                boolean _fogDistSkip = false;
+                 while (rectangleIter.next(vector2i)) {
+                     if (vector2i != null) {
+                         int int1 = vector2i.x + minX;
+@@ -437,20 +439,27 @@
+                             }
+ 
+                             lastRow = int3;
++                            _fogDistSkip = zombie.optizomb.OptiZombConfig.FOG
++                                && zombie.optizomb.OptiZombFog.shouldSkipRow(int3);
+                         }
+ 
+-                        IsoGridSquare square1 = chunkMap.getGridSquare(int1, int2, zLayer);
+-                        boolean boolean0 = true;
+-                        if (square1 != null && (!square1.isExteriorCache || square1.isInARoom())) {
+-                            boolean0 = false;
+-                        }
++                        if (_fogDistSkip) {
++                            if (zombie.optizomb.OptiZombConfig.FOG) zombie.optizomb.OptiZombFog.recordGridSquareSaved();
++                        } else {
++                            IsoGridSquare square1 = chunkMap.getGridSquare(int1, int2, zLayer);
++                            if (zombie.optizomb.OptiZombConfig.FOG) zombie.optizomb.OptiZombFog.recordGridSquareLookup();
++                            boolean boolean0 = true;
++                            if (square1 != null && (!square1.isExteriorCache || square1.isInARoom())) {
++                                boolean0 = false;
++                            }
+ 
+-                        if (boolean0) {
+-                            if (!renderEndOnly || square0 == null) {
+-                                startFogRectangle(int1, int2, zLayer);
++                            if (boolean0) {
++                                if (!renderEndOnly || square0 == null) {
++                                    startFogRectangle(int1, int2, zLayer);
++                                }
++                            } else if (!renderEndOnly || square0 == null) {
++                                endFogRectangle(lastIterPos.x, lastIterPos.y, zLayer);
+                             }
+-                        } else if (!renderEndOnly || square0 == null) {
+-                            endFogRectangle(lastIterPos.x, lastIterPos.y, zLayer);
+                         }
+ 
+                         lastIterPos.set(int1, int2);
+@@ -469,6 +478,7 @@
+             if (fogRectangle.hasStarted) {
+                 endFogRectangle(lastIterPos.x, lastIterPos.y, zLayer);
+             }
++            if (zombie.optizomb.OptiZombConfig.FOG) zombie.optizomb.OptiZombFog.recordFrame();
+         }
+     }
+ 
+@@ -503,10 +513,18 @@
+                 return;
+             }
+         } else if (int0 % renderEveryXRow != 0) {
++            if (zombie.optizomb.OptiZombConfig.FOG) zombie.optizomb.OptiZombFog.recordRowSkipped();
++            return;
++        } else if (zombie.optizomb.OptiZombConfig.FOG && zombie.optizomb.OptiZombFog.shouldSkipRow(int0)) {
++            zombie.optizomb.OptiZombFog.recordRowDistSkipped();
+             return;
+         }
+ 
+         if (!Core.bDebug || renderXRowsFromCenter < 1 || int0 >= playerRow - renderXRowsFromCenter && int0 <= playerRow + renderXRowsFromCenter) {
++            if (zombie.optizomb.OptiZombConfig.FOG) {
++                zombie.optizomb.OptiZombFog.recordRowRendered();
++                zombie.optizomb.OptiZombFog.recordSegmentRendered();
++            }
+             float float0 = baseAlpha;
+             ImprovedFog.FogRectangle fogRectanglex = fogRectangle;
+             float float1 = IsoUtils.XToScreenExact(fogRectanglex.startX, fogRectanglex.startY, fogRectanglex.Z, 0);
+@@ -517,6 +535,9 @@
+             float2 -= 80.0F * Core.TileScale;
+             float3 += 32.0F * Core.TileScale;
+             float float5 = 96.0F * Core.TileScale;
++            if (zombie.optizomb.OptiZombConfig.FOG && zombie.optizomb.OptiZombFog.shouldDoubleHeight(int0)) {
++                float5 *= 2.0F;
++            }
+             float float6 = (float3 - float1) / (64.0F * Core.TileScale);
+             float float7 = fogRectanglex.startX % 6.0F;
+             float float8 = float7 / 6.0F;

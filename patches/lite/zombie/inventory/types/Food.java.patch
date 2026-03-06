@@ -1,0 +1,19 @@
+--- vanilla/zombie/inventory/types/Food.java	2026-03-05 19:03:42.061814086 +0000
++++ src/zombie/inventory/types/Food.java	2026-03-06 14:30:47.647879824 +0000
+@@ -1070,6 +1070,16 @@
+         }
+     }
+ 
++    // Opt ITEMS: skip processItems for food that doesn't need updates
++    @Override
++    public boolean needsProcessing() {
++        if (this.IsCookable) return true;
++        if (this.Heat != 1.0F) return true;
++        if (this.isTaintedWater()) return true;
++        if ((!GameClient.bClient || this.isInLocalPlayerInventory()) && this.OffAgeMax != 1.0E9) return true;
++        return super.needsProcessing();
++    }
++
+     @Override
+     public boolean finishupdate() {
+         if (this.container != null || this.getWorldItem() != null && this.getWorldItem().getSquare() != null) {

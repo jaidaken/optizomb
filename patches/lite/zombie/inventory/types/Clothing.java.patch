@@ -1,0 +1,15 @@
+--- vanilla/zombie/inventory/types/Clothing.java	2026-03-05 19:03:42.258813467 +0000
++++ src/zombie/inventory/types/Clothing.java	2026-03-06 14:30:52.920887975 +0000
+@@ -501,6 +501,12 @@
+         }
+     }
+ 
++    // Opt ITEMS: skip processItems for unequipped clothing
++    @Override
++    public boolean needsProcessing() {
++        return this.isEquipped() || super.needsProcessing();
++    }
++
+     @Override
+     public boolean finishupdate() {
+         return this.container != null && this.container.parent instanceof IsoGameCharacter ? !this.isEquipped() : true;

@@ -1,0 +1,61 @@
+--- vanilla/zombie/characters/IsoGameCharacter.java	2026-03-05 19:04:09.399728314 +0000
++++ src/zombie/characters/IsoGameCharacter.java	2026-03-06 13:18:11.268187042 +0000
+@@ -274,6 +274,8 @@
+     ILuaVariableSource,
+     ILuaGameCharacter {
+     private boolean ignoreAimingInput = false;
++    // Opt SCENE_CULL: LOD tier for lighting/shadow updates (1=full, 2=reduced, 4=minimal)
++    private int lightUpdateInterval = 1;
+     public boolean doRenderShadow = true;
+     private boolean doDeathSound = true;
+     private boolean canShout = true;
+@@ -1242,8 +1244,18 @@
+             } catch (Exception exception) {
+                 System.err.println("Error in IsoGameCharacter.setSceneCulled(" + boolean0 + "):");
+                 ExceptionLogger.logException(exception);
+-                ModelManager.instance.Remove(this);
+-                this.legsSprite.modelSlot = null;
++                // Opt SCENE_CULL: on un-cull failure, leave zombie culled for retry instead of permanently destroying the model
++                if (zombie.optizomb.OptiZombConfig.SCENE_CULL && !boolean0) {
++                    System.err.println("[setSceneCulled] Un-cull failed for " + this + ", leaving culled for retry");
++                    try {
++                        ModelManager.instance.Remove(this);
++                    } catch (Exception exception2) {
++                        // ignore cleanup failure
++                    }
++                } else {
++                    ModelManager.instance.Remove(this);
++                    this.legsSprite.modelSlot = null;
++                }
+             }
+         }
+     }
+@@ -5276,6 +5288,13 @@
+                         float float1 = 1.4F;
+                         float float2 = 1.125F;
+                         float float3 = this.getAlpha(int0);
++                        // Opt SCENE_CULL: skip expensive bone-based shadow for distant zombies
++                        if (zombie.optizomb.OptiZombConfig.SCENE_CULL && this.lightUpdateInterval >= 4
++                                && this.hasActiveModel() && this.hasAnimationPlayer() && this.getAnimationPlayer().isReady()) {
++                            ColorInfo colorInfo = square.lighting[int0].lightInfo();
++                            IsoDeadBody.renderShadow(float13, float12, float18, vector3f0, float0, float1, float2, colorInfo, float3);
++                            return;
++                        }
+                         if (this.hasActiveModel() && this.hasAnimationPlayer() && this.getAnimationPlayer().isReady()) {
+                             AnimationPlayer animationPlayer = this.getAnimationPlayer();
+                             Vector3 vector1 = IsoGameCharacter.L_renderShadow.v1;
+@@ -5358,6 +5377,14 @@
+         }
+     }
+ 
++    public int getLightUpdateInterval() {
++        return this.lightUpdateInterval;
++    }
++
++    public void setLightUpdateInterval(int interval) {
++        this.lightUpdateInterval = interval;
++    }
++
+     public void checkUpdateModelTextures() {
+         if (this.bUpdateModelTextures && this.hasActiveModel()) {
+             this.bUpdateModelTextures = false;

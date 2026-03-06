@@ -1,0 +1,217 @@
+--- vanilla/zombie/inventory/ItemContainer.java	2026-03-05 19:03:43.273810278 +0000
++++ src/zombie/inventory/ItemContainer.java	2026-03-06 11:56:22.229749388 +0000
+@@ -1,10 +1,14 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.inventory;
+ 
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombItems;
+ import java.io.IOException;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+ import java.util.Comparator;
++import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.LinkedHashMap;
+ import java.util.Objects;
+ import java.util.function.Predicate;
+@@ -64,6 +68,8 @@
+     public int Capacity = 50;
+     public InventoryItem containingItem = null;
+     public ArrayList<InventoryItem> Items = new ArrayList<>();
++    // Opt 28d: type index for O(1) lookups by type/fullType
++    final HashMap<String, ArrayList<InventoryItem>> typeIndex = new HashMap<>();
+     public ArrayList<InventoryItem> IncludingObsoleteItems = new ArrayList<>();
+     public IsoObject parent = null;
+     public IsoGridSquare SourceGrid = null;
+@@ -318,6 +324,10 @@
+     }
+ 
+     public int getNumberOfItem(String string, boolean boolean1, boolean boolean0) {
++        if (OptiZombConfig.ITEMS && !boolean0 && !boolean1) {
++            ArrayList<InventoryItem> indexed = OptiZombItems.typeIndexGet(this.typeIndex, string);
++            if (indexed != null) return indexed.size();
++        }
+         int int0 = 0;
+ 
+         for (int int1 = 0; int1 < this.Items.size(); int1++) {
+@@ -363,6 +373,7 @@
+ 
+             item.container = this;
+             this.Items.add(item);
++            if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexAdd(this.typeIndex, item);
+             if (IsoWorld.instance.CurrentCell != null) {
+                 IsoWorld.instance.CurrentCell.addToProcessItems(item);
+             }
+@@ -382,6 +393,7 @@
+             }
+ 
+             this.Items.add(item);
++            if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexAdd(this.typeIndex, item);
+             return item;
+         }
+     }
+@@ -410,6 +422,7 @@
+ 
+                 item1.container = this;
+                 this.Items.add(item1);
++                if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexAdd(this.typeIndex, item1);
+                 if (item1 instanceof Food) {
+                     ((Food)item1).setHeat(this.getTemprature());
+                 }
+@@ -439,6 +452,7 @@
+ 
+             item.container = this;
+             this.Items.add(item);
++            if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexAdd(this.typeIndex, item);
+             return true;
+         }
+     }
+@@ -1154,6 +1168,10 @@
+     }
+ 
+     public int getCountType(String string) {
++        if (OptiZombConfig.ITEMS) {
++            ArrayList<InventoryItem> indexed = OptiZombItems.typeIndexGet(this.typeIndex, string);
++            if (indexed != null) return indexed.size();
++        }
+         ItemContainer.TypePredicate typePredicate = TL_predicates.get().type.alloc().init(string);
+         int int0 = this.getCount(typePredicate);
+         TL_predicates.get().type.release(typePredicate);
+@@ -1287,6 +1305,10 @@
+     }
+ 
+     public InventoryItem getFirstType(String string) {
++        if (OptiZombConfig.ITEMS) {
++            ArrayList<InventoryItem> indexed = OptiZombItems.typeIndexGet(this.typeIndex, string);
++            if (indexed != null) return indexed.isEmpty() ? null : indexed.get(0);
++        }
+         ItemContainer.TypePredicate typePredicate = TL_predicates.get().type.alloc().init(string);
+         InventoryItem item = this.getFirst(typePredicate);
+         TL_predicates.get().type.release(typePredicate);
+@@ -1506,6 +1528,13 @@
+     }
+ 
+     public ArrayList<InventoryItem> getAllType(String string, ArrayList<InventoryItem> arrayList1) {
++        if (OptiZombConfig.ITEMS) {
++            ArrayList<InventoryItem> indexed = OptiZombItems.typeIndexGet(this.typeIndex, string);
++            if (indexed != null) {
++                arrayList1.addAll(indexed);
++                return arrayList1;
++            }
++        }
+         ItemContainer.TypePredicate typePredicate = TL_predicates.get().type.alloc().init(string);
+         ArrayList arrayList0 = this.getAll(typePredicate, arrayList1);
+         TL_predicates.get().type.release(typePredicate);
+@@ -1709,6 +1738,8 @@
+     public InventoryItem FindAndReturn(String string, ArrayList<InventoryItem> arrayList) {
+         if (string == null) {
+             return null;
++        } else if (OptiZombConfig.ITEMS) {
++            return OptiZombItems.findAndReturnWithSkipSet(this.Items, string, arrayList, ItemContainer::compareType);
+         } else {
+             for (int int0 = 0; int0 < this.Items.size(); int0++) {
+                 InventoryItem item = this.Items.get(int0);
+@@ -1775,6 +1806,7 @@
+                     item1.uses--;
+                 } else {
+                     this.Items.remove(item1);
++                    if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item1);
+                 }
+ 
+                 item1.container = null;
+@@ -1804,6 +1836,7 @@
+         }
+ 
+         this.Items.remove(item);
++        if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item);
+         item.container = null;
+         if (this.parent instanceof IsoDeadBody) {
+             ((IsoDeadBody)this.parent).checkClothing(item);
+@@ -1822,6 +1855,7 @@
+                     item.uses--;
+                 } else {
+                     this.Items.remove(item);
++                    if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item);
+                 }
+ 
+                 item.container = null;
+@@ -1841,6 +1875,7 @@
+             InventoryItem item = this.Items.get(int0);
+             if (item.cat == itemType) {
+                 this.Items.remove(item);
++                if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item);
+                 item.container = null;
+                 this.drawDirty = true;
+                 this.dirty = true;
+@@ -1885,6 +1920,7 @@
+ 
+         for (InventoryItem item1 : (Iterable<InventoryItem>)(Iterable<?>)arrayList) {
+             this.Items.remove(item1);
++            if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item1);
+         }
+     }
+ 
+@@ -1902,6 +1938,7 @@
+                 } else {
+                     item0.container = null;
+                     this.Items.remove(item0);
++                    if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRemove(this.typeIndex, item0);
+                 }
+ 
+                 this.dirty = true;
+@@ -2285,6 +2322,7 @@
+ 
+     public void setItems(ArrayList<InventoryItem> arrayList) {
+         this.Items = arrayList;
++        if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexRebuild(this.typeIndex, this.Items);
+     }
+ 
+     public IsoObject getParent() {
+@@ -2313,6 +2351,7 @@
+ 
+     public void clear() {
+         this.Items.clear();
++        if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexClear(this.typeIndex);
+         this.dirty = true;
+         this.drawDirty = true;
+     }
+@@ -2433,6 +2472,7 @@
+         }
+ 
+         this.Items.clear();
++        if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexClear(this.typeIndex);
+         if (this.parent instanceof IsoDeadBody) {
+             ((IsoDeadBody)this.parent).checkClothing(null);
+         }
+@@ -2765,6 +2805,7 @@
+ 
+     public void emptyIt() {
+         this.Items = new ArrayList<>();
++        if (OptiZombConfig.ITEMS) OptiZombItems.typeIndexClear(this.typeIndex);
+     }
+ 
+     public LinkedHashMap<String, InventoryItem> getItems4Admin() {
+@@ -2839,7 +2880,21 @@
+     }
+ 
+     public void addItemsToProcessItems() {
+-        IsoWorld.instance.CurrentCell.addToProcessItems(this.Items);
++        if (OptiZombConfig.ITEMS) {
++            int total = this.Items.size();
++            int filtered = 0;
++            for (int i = 0; i < total; i++) {
++                InventoryItem item = this.Items.get(i);
++                if (item.needsProcessing()) {
++                    IsoWorld.instance.CurrentCell.addToProcessItems(item);
++                } else {
++                    filtered++;
++                }
++            }
++            OptiZombItems.recordProcessItemsFiltered(filtered, total);
++        } else {
++            IsoWorld.instance.CurrentCell.addToProcessItems(this.Items);
++        }
+     }
+ 
+     public void removeItemsFromProcessItems() {

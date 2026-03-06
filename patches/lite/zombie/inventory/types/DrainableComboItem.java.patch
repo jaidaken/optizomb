@@ -1,0 +1,19 @@
+--- vanilla/zombie/inventory/types/DrainableComboItem.java	2026-03-05 19:03:42.094813982 +0000
++++ src/zombie/inventory/types/DrainableComboItem.java	2026-03-06 14:30:50.692884523 +0000
+@@ -402,6 +402,16 @@
+         return (1.0F - this.Heat) / 3.0F;
+     }
+ 
++    // Opt ITEMS: skip processItems for drainables that don't need updates
++    @Override
++    public boolean needsProcessing() {
++        if (this.canStoreWater() && this.isWaterSource()) return true;
++        if (this.isTaintedWater()) return true;
++        if (this.Heat != 1.0F) return true;
++        if (this.container != null && (this.container.type.equals("campfire") || this.container.type.equals("barbecue"))) return true;
++        return super.needsProcessing();
++    }
++
+     @Override
+     public boolean finishupdate() {
+         if (this.canStoreWater() && this.isWaterSource() && this.getWorldItem() != null && this.getWorldItem().getSquare() != null) {

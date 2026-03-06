@@ -1,0 +1,29 @@
+--- vanilla/zombie/iso/IsoChunkMap.java	2026-03-05 19:03:37.639827981 +0000
++++ src/zombie/iso/IsoChunkMap.java	2026-03-06 02:10:26.818827705 +0000
+@@ -8,6 +8,8 @@
+ import java.util.concurrent.ConcurrentLinkedQueue;
+ import java.util.concurrent.locks.ReentrantLock;
+ import zombie.GameTime;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombBlood;
+ import zombie.characters.IsoGameCharacter;
+ import zombie.characters.IsoPlayer;
+ import zombie.core.Color;
+@@ -1004,6 +1006,9 @@
+                         }
+                     }
+ 
++                    if (OptiZombConfig.BLOOD) {
++                        OptiZombBlood.renderOptimized(splatByType, inf, float0, int1);
++                    } else {
+                     for (int int7 = 0; int7 < splatByType.size(); int7++) {
+                         ArrayList arrayList = splatByType.get(int7);
+                         if (!arrayList.isEmpty()) {
+@@ -1100,6 +1105,7 @@
+                             }
+                         }
+                     }
++                    } // end BLOOD else
+                 }
+             }
+         }

@@ -128,7 +128,7 @@ mkdir -p "$INSTALLER_TMP"
 sed "s/VERSION = \"[^\"]*\"/VERSION = \"$VERSION\"/" \
     "$INSTALLER_SRC/OptiZombInstaller.java" > "$INSTALLER_TMP/OptiZombInstaller.java"
 
-javac --release 17 \
+javac --release 8 \
     -cp "$JBSDIFF_JAR:$COMPRESS_JAR" \
     -d "$INSTALLER_BUILD" \
     "$INSTALLER_TMP/OptiZombInstaller.java"

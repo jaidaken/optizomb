@@ -3,9 +3,12 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -27,6 +30,8 @@ import io.sigpipe.jbsdiff.Patch;
  * Install: applies bsdiff patches against vanilla classes to build optizomb.jar,
  *          installs shaders + config, adds classpath entry to all launcher JSONs.
  * Uninstall: removes optizomb.jar + shaders + config, restores original JSONs.
+ *
+ * Compiled at Java 8 for maximum compatibility (like OptiFine).
  */
 public class OptiZombInstaller extends JFrame {
 
@@ -171,6 +176,34 @@ public class OptiZombInstaller extends JFrame {
         }
     }
 
+    // ---- Utilities (Java 8 compatible) ----
+
+    private static byte[] readAllBytes(InputStream is) throws IOException {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        byte[] tmp = new byte[8192];
+        int n;
+        while ((n = is.read(tmp)) != -1) {
+            buf.write(tmp, 0, n);
+        }
+        return buf.toByteArray();
+    }
+
+    private static void copyStream(InputStream is, OutputStream os) throws IOException {
+        byte[] tmp = new byte[8192];
+        int n;
+        while ((n = is.read(tmp)) != -1) {
+            os.write(tmp, 0, n);
+        }
+    }
+
+    private static String readFileString(Path path) throws IOException {
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    }
+
+    private static void writeFileString(Path path, String content) throws IOException {
+        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
+    }
+
     // ---- Platform detection ----
 
     private static boolean isWindows() {
@@ -194,28 +227,38 @@ public class OptiZombInstaller extends JFrame {
         boolean hasJar = Files.isRegularFile(dir.resolve(VANILLA_JAR_NAME));
         if (!hasClasses && !hasJar) return false;
 
-        try (var stream = Files.list(dir)) {
-            return stream.anyMatch(p -> {
-                String name = p.getFileName().toString();
-                return name.startsWith("ProjectZomboid") && name.endsWith(".json");
-            });
-        } catch (IOException e) {
-            return false;
+        File[] files = dir.toFile().listFiles();
+        if (files == null) return false;
+        for (File f : files) {
+            String name = f.getName();
+            if (name.startsWith("ProjectZomboid") && name.endsWith(".json")) {
+                return true;
+            }
         }
+        return false;
     }
 
     private static Path findPZWorkDir(Path dir, int maxDepth) {
         if (!Files.isDirectory(dir)) return null;
         if (isPZWorkDir(dir)) return dir;
-        try (var stream = Files.walk(dir, maxDepth)) {
-            return stream
-                .filter(Files::isDirectory)
-                .filter(OptiZombInstaller::isPZWorkDir)
-                .findFirst()
-                .orElse(null);
+        final Path[] found = {null};
+        try {
+            Files.walkFileTree(dir, java.util.EnumSet.noneOf(FileVisitOption.class),
+                maxDepth, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path d, BasicFileAttributes attrs) {
+                        if (found[0] != null) return FileVisitResult.TERMINATE;
+                        if (isPZWorkDir(d)) {
+                            found[0] = d;
+                            return FileVisitResult.TERMINATE;
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
         } catch (IOException e) {
             return null;
         }
+        return found[0];
     }
 
     // ---- Vanilla class reading ----
@@ -237,8 +280,11 @@ public class OptiZombInstaller extends JFrame {
         } else {
             JarEntry entry = vanillaJar.getJarEntry(classPath);
             if (entry == null) return null;
-            try (InputStream is = vanillaJar.getInputStream(entry)) {
-                return is.readAllBytes();
+            InputStream is = vanillaJar.getInputStream(entry);
+            try {
+                return readAllBytes(is);
+            } finally {
+                is.close();
             }
         }
     }
@@ -247,11 +293,13 @@ public class OptiZombInstaller extends JFrame {
 
     private List<Path> findLauncherJsons(Path workDir) throws IOException {
         List<Path> jsons = new ArrayList<>();
-        try (var stream = Files.list(workDir)) {
-            stream.filter(p -> {
-                String name = p.getFileName().toString();
-                return name.startsWith("ProjectZomboid") && name.endsWith(".json");
-            }).forEach(jsons::add);
+        File[] files = workDir.toFile().listFiles();
+        if (files == null) return jsons;
+        for (File f : files) {
+            String name = f.getName();
+            if (name.startsWith("ProjectZomboid") && name.endsWith(".json")) {
+                jsons.add(f.toPath());
+            }
         }
         return jsons;
     }
@@ -266,7 +314,7 @@ public class OptiZombInstaller extends JFrame {
             return;
         }
 
-        Path workDir = findPZWorkDir(Path.of(pzDir), 3);
+        Path workDir = findPZWorkDir(Paths.get(pzDir), 3);
         if (workDir == null) {
             JOptionPane.showMessageDialog(this,
                 "Project Zomboid installation not found in:\n" + pzDir
@@ -337,7 +385,7 @@ public class OptiZombInstaller extends JFrame {
      */
     private byte[] buildOptiZombJar(Path workDir, VanillaSource source) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        var jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
+        java.net.URL jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
         int patchCount = 0;
         int newCount = 0;
         int errorCount = 0;
@@ -347,9 +395,9 @@ public class OptiZombInstaller extends JFrame {
             vanillaJar = new JarFile(workDir.resolve(VANILLA_JAR_NAME).toFile());
         }
 
-        try (JarFile self = new JarFile(new File(jarUrl.toURI()));
-             JarOutputStream jos = new JarOutputStream(baos)) {
-
+        JarFile self = new JarFile(new File(jarUrl.toURI()));
+        JarOutputStream jos = new JarOutputStream(baos);
+        try {
             Enumeration<JarEntry> entries = self.entries();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
@@ -369,8 +417,11 @@ public class OptiZombInstaller extends JFrame {
                     }
 
                     byte[] patchBytes;
-                    try (InputStream is = self.getInputStream(entry)) {
-                        patchBytes = is.readAllBytes();
+                    InputStream pis = self.getInputStream(entry);
+                    try {
+                        patchBytes = readAllBytes(pis);
+                    } finally {
+                        pis.close();
                     }
 
                     ByteArrayOutputStream patched = new ByteArrayOutputStream();
@@ -390,14 +441,19 @@ public class OptiZombInstaller extends JFrame {
                 } else if (name.endsWith(".class")) {
                     String classPath = name.substring("patches/".length());
                     jos.putNextEntry(new JarEntry(classPath));
-                    try (InputStream is = self.getInputStream(entry)) {
-                        is.transferTo(jos);
+                    InputStream cis = self.getInputStream(entry);
+                    try {
+                        copyStream(cis, jos);
+                    } finally {
+                        cis.close();
                     }
                     jos.closeEntry();
                     newCount++;
                 }
             }
         } finally {
+            jos.close();
+            self.close();
             if (vanillaJar != null) vanillaJar.close();
         }
 
@@ -424,7 +480,7 @@ public class OptiZombInstaller extends JFrame {
 
         for (Path jsonPath : jsons) {
             String fileName = jsonPath.getFileName().toString();
-            String content = Files.readString(jsonPath);
+            String content = readFileString(jsonPath);
 
             if (content.contains("\"" + JAR_NAME + "\"")) {
                 log("  " + fileName + ": classpath already has " + JAR_NAME);
@@ -450,7 +506,7 @@ public class OptiZombInstaller extends JFrame {
             }
 
             if (!patched.equals(content)) {
-                Files.writeString(jsonPath, patched);
+                writeFileString(jsonPath, patched);
                 log("  " + fileName + ": added " + JAR_NAME + " to classpath");
             } else {
                 log("  WARNING: Could not patch " + fileName + " — unknown format");
@@ -460,7 +516,7 @@ public class OptiZombInstaller extends JFrame {
 
     /**
      * Detect system RAM and optimize -Xmx in all launcher JSONs.
-     * Uses 50% of physical RAM, clamped to [3072, 8192] MB.
+     * Uses 50% of physical RAM, clamped to [3072, 16384] MB.
      * Only bumps up — never reduces a user's existing setting.
      */
     private void optimizeMemorySettings(Path workDir) throws IOException {
@@ -479,7 +535,7 @@ public class OptiZombInstaller extends JFrame {
         Pattern xmxPattern = Pattern.compile("\"-Xmx(\\d+)([mMgG])\"");
 
         for (Path jsonPath : jsons) {
-            String content = Files.readString(jsonPath);
+            String content = readFileString(jsonPath);
             Matcher m = xmxPattern.matcher(content);
             if (m.find()) {
                 long currentMB = Long.parseLong(m.group(1));
@@ -488,7 +544,7 @@ public class OptiZombInstaller extends JFrame {
 
                 if (currentMB < recommendedMB) {
                     String patched = content.replace(m.group(), "\"-Xmx" + recommendedMB + "m\"");
-                    Files.writeString(jsonPath, patched);
+                    writeFileString(jsonPath, patched);
                     log("  " + jsonPath.getFileName() + ": -Xmx " + currentMB + "m → " + recommendedMB + "m");
                 } else {
                     log("  " + jsonPath.getFileName() + ": -Xmx " + currentMB + "m (already sufficient)");
@@ -503,8 +559,8 @@ public class OptiZombInstaller extends JFrame {
     private static long detectSystemRamMB() {
         // Try JMX (works on all platforms with standard JDK)
         try {
-            var os = ManagementFactory.getOperatingSystemMXBean();
-            var method = os.getClass().getMethod("getTotalMemorySize");
+            Object os = ManagementFactory.getOperatingSystemMXBean();
+            java.lang.reflect.Method method = os.getClass().getMethod("getTotalMemorySize");
             method.setAccessible(true);
             long bytes = (Long) method.invoke(os);
             if (bytes > 0) return bytes / (1024 * 1024);
@@ -512,8 +568,8 @@ public class OptiZombInstaller extends JFrame {
 
         // Fallback: getTotalPhysicalMemorySize (older JDKs)
         try {
-            var os = ManagementFactory.getOperatingSystemMXBean();
-            var method = os.getClass().getMethod("getTotalPhysicalMemorySize");
+            Object os = ManagementFactory.getOperatingSystemMXBean();
+            java.lang.reflect.Method method = os.getClass().getMethod("getTotalPhysicalMemorySize");
             method.setAccessible(true);
             long bytes = (Long) method.invoke(os);
             if (bytes > 0) return bytes / (1024 * 1024);
@@ -521,7 +577,7 @@ public class OptiZombInstaller extends JFrame {
 
         // Fallback: /proc/meminfo (Linux)
         try {
-            Path meminfo = Path.of("/proc/meminfo");
+            Path meminfo = Paths.get("/proc/meminfo");
             if (Files.exists(meminfo)) {
                 for (String line : Files.readAllLines(meminfo)) {
                     if (line.startsWith("MemTotal:")) {
@@ -543,14 +599,15 @@ public class OptiZombInstaller extends JFrame {
         List<Path> jsons = findLauncherJsons(workDir);
 
         // Also check for backup files whose originals might have been removed
-        try (var stream = Files.list(workDir)) {
-            stream.filter(p -> p.getFileName().toString().endsWith(".optizomb-backup"))
-                  .forEach(backup -> {
-                      String origName = backup.getFileName().toString()
-                          .replace(".optizomb-backup", "");
-                      Path orig = backup.resolveSibling(origName);
-                      if (!jsons.contains(orig)) jsons.add(orig);
-                  });
+        File[] files = workDir.toFile().listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.getName().endsWith(".optizomb-backup")) {
+                    String origName = f.getName().replace(".optizomb-backup", "");
+                    Path orig = f.toPath().resolveSibling(origName);
+                    if (!jsons.contains(orig)) jsons.add(orig);
+                }
+            }
         }
 
         for (Path jsonPath : jsons) {
@@ -566,7 +623,7 @@ public class OptiZombInstaller extends JFrame {
             }
 
             if (!Files.isRegularFile(jsonPath)) continue;
-            String content = Files.readString(jsonPath);
+            String content = readFileString(jsonPath);
             if (!content.contains("\"" + JAR_NAME + "\"")) continue;
 
             // Fallback: string removal (handles \r\n and \n)
@@ -578,7 +635,7 @@ public class OptiZombInstaller extends JFrame {
             }
             String cleaned = sb.toString().replaceAll(",\\s*" + System.lineSeparator() + "(\\s*])",
                 System.lineSeparator() + "$1");
-            Files.writeString(jsonPath, cleaned);
+            writeFileString(jsonPath, cleaned);
             log("  " + fileName + ": removed " + JAR_NAME + " from classpath");
         }
     }
@@ -588,18 +645,24 @@ public class OptiZombInstaller extends JFrame {
      */
     private void installShaders(Path workDir) throws Exception {
         Map<String, byte[]> shaders = new LinkedHashMap<>();
-        var jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
-        try (JarFile self = new JarFile(new File(jarUrl.toURI()))) {
+        java.net.URL jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
+        JarFile self = new JarFile(new File(jarUrl.toURI()));
+        try {
             Enumeration<JarEntry> entries = self.entries();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 String name = entry.getName();
                 if (name.startsWith("shaders/") && !entry.isDirectory()) {
-                    try (InputStream is = self.getInputStream(entry)) {
-                        shaders.put(name.substring("shaders/".length()), is.readAllBytes());
+                    InputStream is = self.getInputStream(entry);
+                    try {
+                        shaders.put(name.substring("shaders/".length()), readAllBytes(is));
+                    } finally {
+                        is.close();
                     }
                 }
             }
+        } finally {
+            self.close();
         }
 
         if (shaders.isEmpty()) return;
@@ -608,7 +671,7 @@ public class OptiZombInstaller extends JFrame {
         Files.createDirectories(shaderDir);
         List<String> installedNames = new ArrayList<>();
 
-        for (var entry : shaders.entrySet()) {
+        for (Map.Entry<String, byte[]> entry : shaders.entrySet()) {
             Path target = shaderDir.resolve(entry.getKey());
 
             // Back up existing vanilla shader if it exists and hasn't been backed up yet
@@ -629,20 +692,26 @@ public class OptiZombInstaller extends JFrame {
     }
 
     private void installConfig(Path workDir) throws Exception {
-        var jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
-        try (JarFile self = new JarFile(new File(jarUrl.toURI()))) {
+        java.net.URL jarUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
+        JarFile self = new JarFile(new File(jarUrl.toURI()));
+        try {
             JarEntry configEntry = self.getJarEntry("optizomb.properties.default");
             if (configEntry != null) {
                 Path configFile = workDir.resolve("optizomb.properties");
                 if (!Files.exists(configFile)) {
-                    try (InputStream is = self.getInputStream(configEntry)) {
-                        Files.write(configFile, is.readAllBytes());
+                    InputStream is = self.getInputStream(configEntry);
+                    try {
+                        Files.write(configFile, readAllBytes(is));
+                    } finally {
+                        is.close();
                     }
                     log("  Installed default optizomb.properties");
                 } else {
                     log("  optizomb.properties already exists (kept)");
                 }
             }
+        } finally {
+            self.close();
         }
     }
 
@@ -656,7 +725,7 @@ public class OptiZombInstaller extends JFrame {
             return;
         }
 
-        Path workDir = findPZWorkDir(Path.of(pzDir), 3);
+        Path workDir = findPZWorkDir(Paths.get(pzDir), 3);
         if (workDir == null) {
             JOptionPane.showMessageDialog(this,
                 "Project Zomboid installation not found in:\n" + pzDir,
@@ -735,7 +804,7 @@ public class OptiZombInstaller extends JFrame {
             shaderNames = Files.readAllLines(manifest);
         } else {
             // Fallback: hardcoded list for installations done before manifest was added
-            shaderNames = List.of(
+            shaderNames = Arrays.asList(
                 "spriteInstanced.vert", "spriteInstanced.frag",
                 "floorTileInstanced.vert", "floorTileInstanced.frag",
                 "basicEffect_tbo.vert", "basicEffect_tbo.frag",
@@ -789,7 +858,7 @@ public class OptiZombInstaller extends JFrame {
         }
 
         for (String path : candidates) {
-            Path workDir = findPZWorkDir(Path.of(path), 3);
+            Path workDir = findPZWorkDir(Paths.get(path), 3);
             if (workDir != null) return workDir.toString();
         }
 
@@ -808,7 +877,7 @@ public class OptiZombInstaller extends JFrame {
         }
 
         for (String vdfPath : vdfPaths) {
-            Path vdf = Path.of(vdfPath);
+            Path vdf = Paths.get(vdfPath);
             if (!Files.exists(vdf)) continue;
             try {
                 for (String line : Files.readAllLines(vdf)) {
@@ -816,7 +885,7 @@ public class OptiZombInstaller extends JFrame {
                     if (line.startsWith("\"path\"")) {
                         String libPath = line.replaceAll(".*\"path\"\\s+\"(.+)\".*", "$1");
                         libPath = libPath.replace("\\\\", "\\");
-                        Path pzDir = Path.of(libPath, "steamapps", "common", "ProjectZomboid");
+                        Path pzDir = Paths.get(libPath, "steamapps", "common", "ProjectZomboid");
                         Path workDir = findPZWorkDir(pzDir, 3);
                         if (workDir != null) return workDir.toString();
                     }
@@ -831,10 +900,18 @@ public class OptiZombInstaller extends JFrame {
 
     private static void deleteDirectoryRecursive(Path dir) throws IOException {
         if (!Files.isDirectory(dir)) return;
-        try (var walk = Files.walk(dir)) {
-            walk.sorted(Comparator.reverseOrder())
-                .forEach(p -> { try { Files.delete(p); } catch (IOException ignored) {} });
-        }
+        Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+            @Override
+            public FileVisitResult postVisitDirectory(Path d, IOException exc) throws IOException {
+                Files.delete(d);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     // ---- Entry point ----
@@ -860,7 +937,16 @@ public class OptiZombInstaller extends JFrame {
         } catch (Exception ignored) {}
 
         SwingUtilities.invokeLater(() -> {
-            new OptiZombInstaller().setVisible(true);
+            try {
+                new OptiZombInstaller().setVisible(true);
+            } catch (Throwable t) {
+                String msg = "Failed to start OptiZomb Installer.\n\n"
+                    + "Error: " + t.getClass().getSimpleName() + ": " + t.getMessage() + "\n\n"
+                    + "Java version: " + System.getProperty("java.version") + "\n"
+                    + "Please report this at github.com/jaidaken/optizomb/issues";
+                JOptionPane.showMessageDialog(null, msg, "OptiZomb Error", JOptionPane.ERROR_MESSAGE);
+                t.printStackTrace();
+            }
         });
     }
 
@@ -868,7 +954,7 @@ public class OptiZombInstaller extends JFrame {
      * Headless CLI mode — no Swing, no display required.
      */
     private static void runCLI(String command, String path) {
-        Path dir = Path.of(path);
+        Path dir = Paths.get(path);
         Path workDir = findPZWorkDir(dir, 3);
         if (workDir == null) {
             System.err.println("ERROR: PZ installation not found at: " + path);

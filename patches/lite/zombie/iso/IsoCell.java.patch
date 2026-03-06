@@ -1,14 +1,27 @@
 --- vanilla/zombie/iso/IsoCell.java	2026-03-05 19:03:40.901817730 +0000
-+++ src/zombie/iso/IsoCell.java	2026-03-05 23:42:02.296647695 +0000
-@@ -1,6 +1,7 @@
++++ src/zombie/iso/IsoCell.java	2026-03-06 23:06:02.456963297 +0000
+@@ -1,6 +1,9 @@
  // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
  package zombie.iso;
  
++import zombie.optizomb.OptiZombConfig;
 +import zombie.optizomb.OptiZombGPUProfiler;
++import zombie.optizomb.OptiZombShadows;
  import java.awt.Rectangle;
  import java.io.BufferedInputStream;
  import java.io.BufferedOutputStream;
-@@ -525,6 +526,10 @@
+@@ -101,6 +104,10 @@
+     public static int MaxHeight = 8;
+     private static Shader m_floorRenderShader;
+     private static Shader m_wallRenderShader;
++    // Opt 20f: cached floorLayer uniform location (avoids per-tile HashMap lookup)
++    static int s_floorLayerLoc = -1;
++    // Opt 21: Floor FBO dirty-rect cache
++    private static final FloorFBOCache floorFBOCache = new FloorFBOCache();
+     public ArrayList<IsoGridSquare> Trees = new ArrayList<>();
+     static final ArrayList<IsoGridSquare> stchoices = new ArrayList<>();
+     public final IsoChunkMap[] ChunkMap = new IsoChunkMap[4];
+@@ -525,6 +532,10 @@
      }
  
      private void renderTilesInternal(int int1) {
@@ -19,7 +32,46 @@
          if (DebugOptions.instance.Terrain.RenderTiles.Enable.getValue()) {
              if (m_floorRenderShader == null) {
                  RenderThread.invokeOnRenderContext(this::initTileShaders);
-@@ -578,12 +583,14 @@
+@@ -559,12 +570,32 @@
+             if (this.SetCutawayRoomsForPlayer() || boolean0) {
+                 IsoGridStack gridStack = perPlayerRenderx.GridStacks;
+ 
+-                for (int int2 = 0; int2 < int1 + 1; int2++) {
+-                    GridStack = gridStack.Squares.get(int2);
+-
+-                    for (int int3 = 0; int3 < GridStack.size(); int3++) {
+-                        IsoGridSquare square = GridStack.get(int3);
+-                        square.setPlayerCutawayFlag(int0, this.IsCutawaySquare(square, long0), long0);
++                if (zombie.optizomb.OptiZombConfig.CUTAWAY) {
++                    zombie.optizomb.OptiZombCutaway.recordLoopStart();
++                    IsoGridSquare _playerSq = IsoPlayer.players[int0] != null ? IsoPlayer.players[int0].current : null;
++                    int _px = _playerSq != null ? _playerSq.getX() : Integer.MIN_VALUE;
++                    int _py = _playerSq != null ? _playerSq.getY() : Integer.MIN_VALUE;
++                    for (int int2 = 0; int2 < int1 + 1; int2++) {
++                        GridStack = gridStack.Squares.get(int2);
++                        for (int int3 = 0; int3 < GridStack.size(); int3++) {
++                            IsoGridSquare square = GridStack.get(int3);
++                            if (zombie.optizomb.OptiZombCutaway.shouldRecompute(square, _px, _py)) {
++                                boolean _result = this.IsCutawaySquare(square, long0);
++                                zombie.optizomb.OptiZombCutaway.cacheResult(square, _px, _py, _result);
++                                square.setPlayerCutawayFlag(int0, _result, long0);
++                            } else {
++                                zombie.optizomb.OptiZombCutaway.recordCacheHit();
++                                square.setPlayerCutawayFlag(int0, square.cutawayCachedResult, long0);
++                            }
++                        }
++                    }
++                } else {
++                    for (int int2 = 0; int2 < int1 + 1; int2++) {
++                        GridStack = gridStack.Squares.get(int2);
++                        for (int int3 = 0; int3 < GridStack.size(); int3++) {
++                            IsoGridSquare square = GridStack.get(int3);
++                            square.setPlayerCutawayFlag(int0, this.IsCutawaySquare(square, long0), long0);
++                        }
+                     }
+                 }
+             }
+@@ -578,12 +609,14 @@
              ShadedFloor.clear();
              SolidFloor.clear();
              VegetationCorpses.clear();
@@ -34,7 +86,17 @@
          }
      }
  
-@@ -598,6 +605,11 @@
+@@ -593,11 +626,21 @@
+         }
+ 
+         m_floorRenderShader = new Shader("floorTile");
++        // Opt 20f: resolve floorLayer uniform location once
++        if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE && m_floorRenderShader.getProgram() != null) {
++            zombie.core.opengl.ShaderProgram.Uniform u = m_floorRenderShader.getProgram().getUniform("floorLayer", 5124, false);
++            s_floorLayerLoc = u != null ? u.loc : -1;
++        }
+         if (DebugLog.isEnabled(DebugType.Shader)) {
+             DebugLog.Shader.debugln("Loading shader: \"wallTile\"");
          }
  
          m_wallRenderShader = new Shader("wallTile");
@@ -46,37 +108,317 @@
      }
  
      private IsoCell.PerPlayerRender getPerPlayerRenderAt(int int0) {
-@@ -774,6 +786,7 @@
+@@ -773,7 +816,32 @@
+             shader1 = m_wallRenderShader;
          }
  
++        // Opt 21: Floor FBO evaluate (once per frame, before layer loop)
++        boolean _fboClean = false;
++        boolean _fboBypass = false;
++        FloorFBOCache _fboCache = null;
++        long _fpT = zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE ? System.nanoTime() : 0;
++        if (zombie.optizomb.OptiZombConfig.FLOOR_FBO && zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++            _fboCache = floorFBOCache;
++            int _numLayers = int1 + 1;
++            float _dirtyTime = IsoPlayer.players[int3] != null ? IsoPlayer.players[int3].dirtyRecalcGridStackTime : 1.0F;
++            int _fboAction = _fboCache.evaluateFrame(_numLayers, _dirtyTime, gridStack.Squares, _numLayers, int3);
++            if (_fboAction == FloorFBOCache.BLIT) {
++                _fboClean = true;
++                zombie.optizomb.OptiZombFloorFBO.recordCleanFrame();
++            } else if (_fboAction == FloorFBOCache.BYPASS) {
++                _fboBypass = true;
++                zombie.optizomb.OptiZombFloorFBO.recordDirtyFrame();
++            } else {
++                zombie.optizomb.OptiZombFloorFBO.recordDirtyFrame();
++            }
++        }
++        if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++            zombie.optizomb.OptiZombFloorPipeline.recordFboCheckNs(System.nanoTime() - _fpT);
++        }
++
          for (int int0 = 0; int0 < int1 + 1; int0++) {
 +            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_FLOOR);
              IsoCell.s_performance.renderTiles.PperformRenderTilesLayer pperformRenderTilesLayer = IsoCell.s_performance.renderTiles.performRenderTilesLayers
                  .start(int0);
              GridStack = gridStack.Squares.get(int0);
-@@ -862,6 +875,8 @@
+@@ -790,78 +858,167 @@
+             }
+ 
+             pperformRenderTilesLayer.renderFloor.start();
++            long _layerFloorT = zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE ? System.nanoTime() : 0;
+ 
+-            for (int int2 = 0; int2 < GridStack.size(); int2++) {
+-                IsoGridSquare square0 = GridStack.get(int2);
+-                if (square0.chunk == null || !square0.chunk.bLightingNeverDone[int3]) {
+-                    square0.bFlattenGrassEtc = int0 == 0 && booleans[square0.x - this.minX][square0.y - this.minY];
+-                    int int4 = square0.renderFloor(shader0);
+-                    if (!square0.getStaticMovingObjects().isEmpty()) {
+-                        int4 |= 2;
+-                        int4 |= 16;
+-                        if (square0.HasStairs()) {
+-                            int4 |= 4;
++            // Opt 21: FBO clean frame — blit cached texture + restore bucket lists
++            if (_fboClean && _fboCache != null) {
++                _fboCache.blitCached(int0);
++                _fboCache.restoreBuckets(int0, SolidFloor, ShadedFloor, VegetationCorpses, MinusFloorCharacters, ShadowSquares);
++            } else {
++                // Opt 21: begin FBO capture (CAPTURE frames only, not BYPASS)
++                if (_fboCache != null && !_fboBypass) {
++                    _fboCache.saveGridStackSize(int0, GridStack.size());
++                    _fboCache.beginCapture(int0);
++                }
++
++                if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++                    // Opt 20a/50: hoist frame-invariant values to per-layer
++                    int _playerIndex = IsoCamera.frameState.playerIndex;
++                    IsoGridSquare _camSquare = IsoCamera.frameState.CamCharacterSquare;
++                    boolean _pvpFlag = GameClient.bClient && IsoPlayer.players[_playerIndex] != null
++                        && IsoPlayer.players[_playerIndex].isSeeNonPvpZone();
++                    int _effectiveRoomId = this.GetEffectivePlayerRoomId();
++                    int _shaderID = shader0 != null ? shader0.getID() : -1;
++                    // Opt 50: hoist DebugOptions + settings reads to per-layer
++                    boolean _renderTiles = DebugOptions.instance.Terrain.RenderTiles.RenderGridSquares.getValue();
++                    boolean _useDefColor = PerformanceSettings.LightingFrameSkip < 3;
++                    boolean _debugSafeHouse = Core.bDebug && GameClient.bClient;
++
++                    // Opt 20e: one StartShader per z-layer
++                    IndieGL.StartShader(shader0, _playerIndex);
++
++                    for (int int2 = 0; int2 < GridStack.size(); int2++) {
++                        IsoGridSquare square0 = GridStack.get(int2);
++                        if (square0.chunk == null || !square0.chunk.bLightingNeverDone[int3]) {
++                            square0.bFlattenGrassEtc = int0 == 0 && booleans[square0.x - this.minX][square0.y - this.minY];
++                            // Opt 20c/50: direct call with hoisted params, no per-square timing
++                            int int4 = square0.renderFloorInternal(shader0, _playerIndex, _shaderID,
++                                s_floorLayerLoc, _camSquare, _pvpFlag, _effectiveRoomId,
++                                _renderTiles, _useDefColor, _debugSafeHouse);
++
++                            // Opt 20d: translate cached static bucket bits
++                            if (square0.staticBucketDirty) {
++                                zombie.optizomb.OptiZombFloorPipeline.recomputeStaticBucketBits(square0);
++                            }
++                            int4 |= zombie.optizomb.OptiZombFloorPipeline.translateStaticBucketBits(square0.staticBucketBits);
++
++                            // MovingObjects loop stays dynamic (not cached)
++                            for (int int5 = 0; int5 < square0.getMovingObjects().size(); int5++) {
++                                IsoMovingObject movingObject = square0.getMovingObjects().get(int5);
++                                boolean boolean0 = movingObject.bOnFloor;
++                                if (boolean0 && movingObject instanceof IsoZombie zombie0) {
++                                    boolean0 = zombie0.isProne();
++                                    if (!BaseVehicle.RENDER_TO_TEXTURE) {
++                                        boolean0 = false;
++                                    }
++                                }
++                                if (boolean0) {
++                                    int4 |= 2;
++                                } else {
++                                    int4 |= 4;
++                                }
++                                int4 |= 16;
++                            }
++
++                            if ((int4 & 1) != 0) SolidFloor.add(square0);
++                            if ((int4 & 8) != 0) ShadedFloor.add(square0);
++                            if ((int4 & 2) != 0) VegetationCorpses.add(square0);
++                            if ((int4 & 4) != 0) MinusFloorCharacters.add(square0);
++                            if ((int4 & 16) != 0) ShadowSquares.add(square0);
+                         }
+                     }
+ 
+-                    if (!square0.getWorldObjects().isEmpty()) {
+-                        int4 |= 2;
+-                    }
++                    // Opt 20e: end shader bracket for z-layer
++                    IndieGL.StartShader(null);
++                } else {
++                    // Vanilla floor path
++                    for (int int2 = 0; int2 < GridStack.size(); int2++) {
++                        IsoGridSquare square0 = GridStack.get(int2);
++                        if (square0.chunk == null || !square0.chunk.bLightingNeverDone[int3]) {
++                            square0.bFlattenGrassEtc = int0 == 0 && booleans[square0.x - this.minX][square0.y - this.minY];
++                            int int4 = square0.renderFloor(shader0);
++                            if (!square0.getStaticMovingObjects().isEmpty()) {
++                                int4 |= 2;
++                                int4 |= 16;
++                                if (square0.HasStairs()) {
++                                    int4 |= 4;
++                                }
++                            }
+ 
+-                    if (!square0.getLocalTemporaryObjects().isEmpty()) {
+-                        int4 |= 4;
+-                    }
++                            if (!square0.getWorldObjects().isEmpty()) {
++                                int4 |= 2;
++                            }
++
++                            if (!square0.getLocalTemporaryObjects().isEmpty()) {
++                                int4 |= 4;
++                            }
++
++                            for (int int5 = 0; int5 < square0.getMovingObjects().size(); int5++) {
++                                IsoMovingObject movingObject = square0.getMovingObjects().get(int5);
++                                boolean boolean0 = movingObject.bOnFloor;
++                                if (boolean0 && movingObject instanceof IsoZombie zombie0) {
++                                    boolean0 = zombie0.isProne();
++                                    if (!BaseVehicle.RENDER_TO_TEXTURE) {
++                                        boolean0 = false;
++                                    }
++                                }
+ 
+-                    for (int int5 = 0; int5 < square0.getMovingObjects().size(); int5++) {
+-                        IsoMovingObject movingObject = square0.getMovingObjects().get(int5);
+-                        boolean boolean0 = movingObject.bOnFloor;
+-                        if (boolean0 && movingObject instanceof IsoZombie zombie0) {
+-                            boolean0 = zombie0.isProne();
+-                            if (!BaseVehicle.RENDER_TO_TEXTURE) {
+-                                boolean0 = false;
+-                            }
+-                        }
++                                if (boolean0) {
++                                    int4 |= 2;
++                                } else {
++                                    int4 |= 4;
++                                }
+ 
+-                        if (boolean0) {
+-                            int4 |= 2;
+-                        } else {
+-                            int4 |= 4;
+-                        }
++                                int4 |= 16;
++                            }
+ 
+-                        int4 |= 16;
+-                    }
++                            if (!square0.getDeferedCharacters().isEmpty()) {
++                                int4 |= 4;
++                            }
+ 
+-                    if (!square0.getDeferedCharacters().isEmpty()) {
+-                        int4 |= 4;
+-                    }
++                            if (square0.hasFlies()) {
++                                int4 |= 4;
++                            }
+ 
+-                    if (square0.hasFlies()) {
+-                        int4 |= 4;
+-                    }
++                            if ((int4 & 1) != 0) {
++                                SolidFloor.add(square0);
++                            }
+ 
+-                    if ((int4 & 1) != 0) {
+-                        SolidFloor.add(square0);
+-                    }
++                            if ((int4 & 8) != 0) {
++                                ShadedFloor.add(square0);
++                            }
+ 
+-                    if ((int4 & 8) != 0) {
+-                        ShadedFloor.add(square0);
+-                    }
++                            if ((int4 & 2) != 0) {
++                                VegetationCorpses.add(square0);
++                            }
+ 
+-                    if ((int4 & 2) != 0) {
+-                        VegetationCorpses.add(square0);
+-                    }
++                            if ((int4 & 4) != 0) {
++                                MinusFloorCharacters.add(square0);
++                            }
+ 
+-                    if ((int4 & 4) != 0) {
+-                        MinusFloorCharacters.add(square0);
++                            if ((int4 & 16) != 0) {
++                                ShadowSquares.add(square0);
++                            }
++                        }
+                     }
++                }
+ 
+-                    if ((int4 & 16) != 0) {
+-                        ShadowSquares.add(square0);
+-                    }
++                // Opt 21: end FBO capture + blit (CAPTURE frames only, not BYPASS)
++                if (_fboCache != null && !_fboBypass) {
++                    _fboCache.endCapture(int0);
++                    _fboCache.blitCached(int0);
++                    _fboCache.saveBuckets(int0, SolidFloor, ShadedFloor, VegetationCorpses, MinusFloorCharacters, ShadowSquares);
+                 }
              }
  
              pperformRenderTilesLayer.renderFloor.end();
++            if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++                zombie.optizomb.OptiZombFloorPipeline.recordRenderLoopNs(System.nanoTime() - _layerFloorT);
++                zombie.optizomb.OptiZombFloorPipeline.recordLayer(_fboClean);
++            }
 +            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_FLOOR);
 +            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
++            long _layerEnvT = zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE ? System.nanoTime() : 0;
              pperformRenderTilesLayer.renderPuddles.start();
              IsoPuddles.getInstance().render(SolidFloor, int0);
              pperformRenderTilesLayer.renderPuddles.end();
-@@ -904,6 +919,8 @@
+@@ -904,6 +1061,11 @@
  
              IsoMarkers.instance.renderIsoMarkers(perPlayerRenderx, int0, int3);
              IsoMarkers.instance.renderCircleIsoMarkers(perPlayerRenderx, int0, int3);
++            if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++                zombie.optizomb.OptiZombFloorPipeline.recordEnvNs(System.nanoTime() - _layerEnvT);
++            }
 +            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
 +            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_CHARS);
              if (DebugOptions.instance.Terrain.RenderTiles.VegetationCorpses.getValue()) {
                  pperformRenderTilesLayer.vegetationCorpses.start();
  
-@@ -948,6 +965,7 @@
+@@ -948,10 +1110,25 @@
              IsoMarkers.instance.renderIsoMarkersDeferred(perPlayerRenderx, int0, int3);
              ImprovedFog.endRender();
              pperformRenderTilesLayer.end();
 +            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_CHARS);
++        }
++
++        // Opt 21: update FBO cached state after all layers (BYPASS + CAPTURE, not BLIT)
++        if (_fboCache != null && !_fboClean) {
++            _fboCache.updateCachedState(int1 + 1, int3);
++            if (!_fboBypass) {
++                _fboCache.markCaptured();
++            }
++        }
++        if (zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE) {
++            zombie.optizomb.OptiZombFloorPipeline.recordFrame();
          }
      }
  
+     private void renderShadows() {
++        if (OptiZombConfig.SHADOWS) {
++            OptiZombShadows.clearBuffer();
++        }
+         boolean boolean0 = Core.getInstance().getOptionCorpseShadows();
+ 
+         for (int int0 = 0; int0 < ShadowSquares.size(); int0++) {
+@@ -980,6 +1157,10 @@
+                 }
+             }
+         }
++
++        if (OptiZombConfig.SHADOWS) {
++            OptiZombShadows.flushSorted();
++        }
+     }
+ 
+     private void renderDebugPhysics(int int0) {
+@@ -2232,7 +2413,11 @@
+     }
+ 
+     private void ProcessObjects(Iterator<IsoMovingObject> var1) {
++        long _updStart = Core.bDebug ? System.nanoTime() : 0;
+         MovingObjectUpdateScheduler.instance.update();
++        if (Core.bDebug) {
++            zombie.optizomb.OptiZombPerfLog.recordUpdateTime(System.nanoTime() - _updStart);
++        }
+ 
+         for (int int0 = 0; int0 < this.ZombieList.size(); int0++) {
+             IsoZombie zombie0 = this.ZombieList.get(int0);

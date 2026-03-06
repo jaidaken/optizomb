@@ -25,12 +25,10 @@ VERSION=$(cat "$PROJECT_DIR/version.txt" | tr -d '[:space:]')
 
 echo "=== OptiZomb Installer Build (tier: $TIER, v$VERSION) ==="
 
-# Step 1: Build if needed
-if [ ! -d "$BUILD_DIR/classes" ]; then
-    echo "Classes not found, building first..."
-    bash "$PROJECT_DIR/scripts/build.sh" "$TIER"
-    echo ""
-fi
+# Step 1: Always rebuild to ensure version and patches are current
+echo "Building classes..."
+bash "$PROJECT_DIR/scripts/build.sh" "$TIER"
+echo ""
 
 # Step 2: Generate bsdiff patches — ONLY for files we actually modified
 echo "Generating binary patches (bsdiff)..."

@@ -14,7 +14,7 @@ import zombie.debug.DebugLog;
  */
 public final class OptiZombConfig {
 
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "0.1.4";
 
     private static final Properties props = new Properties();
     private static final String configSource;

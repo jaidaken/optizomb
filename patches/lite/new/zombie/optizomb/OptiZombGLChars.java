@@ -88,10 +88,11 @@ public final class OptiZombGLChars {
         if (OptiZombConfig.GL_CHARS) {
             if (!confirmed) {
                 confirmed = true;
-                DebugLog.General.println("[OptiZomb] GL_CHARS active: client attrib eliminated, server attrib narrowed to 0x100");
+                DebugLog.General.println("[OptiZomb] GL_CHARS active: client attrib eliminated, server attrib narrowed to 0x6500");
             }
             // No glPushClientAttrib - tracked by VertexBufferObject.restoreClientState()
-            GL11.glPushAttrib(0x100);        // GL_DEPTH_BUFFER_BIT only (was 0xFFFFF = all)
+            GL11.glPushAttrib(0x6500);       // GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT
+            OptiZombRenderDebug.recordAttribPush();
             GL11.glEnable(3042);             // GL_BLEND
             GL11.glBlendFunc(770, 771);      // SRC_ALPHA, ONE_MINUS_SRC_ALPHA
             GL11.glEnable(3008);             // GL_ALPHA_TEST
@@ -117,7 +118,8 @@ public final class OptiZombGLChars {
         if (OptiZombConfig.GL_CHARS) {
             Shader.resetLastBound();
             Shader.resetCharacterTextureCache();
-            GL11.glPopAttrib();                      // restores GL_DEPTH_BUFFER_BIT only
+            GL11.glPopAttrib();                      // restores DEPTH+STENCIL+ENABLE+COLOR_BUFFER
+            OptiZombRenderDebug.recordAttribPop();
             VertexBufferObject.restoreClientState();  // replaces glPopClientAttrib
             VertexBufferObject.resetVBOCache();
             Texture.lastTextureID = -1;
@@ -149,6 +151,8 @@ public final class OptiZombGLChars {
         if (OptiZombConfig.GL_CHARS) {
             GL11.glPushClientAttrib(0x2);    // GL_CLIENT_VERTEX_ARRAY_BIT only
             GL11.glPushAttrib(0x46108);      // depth+color+enable+polygon+scissor
+            OptiZombRenderDebug.recordClientAttribPush();
+            OptiZombRenderDebug.recordAttribPush();
             GL11.glEnable(2929);
             GL11.glDisable(3089);
         } else {
@@ -166,7 +170,10 @@ public final class OptiZombGLChars {
     public static void endOutlineState() {
         GL11.glPopAttrib();
         GL11.glPopClientAttrib();
+        OptiZombRenderDebug.recordAttribPop();
+        OptiZombRenderDebug.recordClientAttribPop();
         if (OptiZombConfig.GL_CHARS) {
+            Shader.resetCharacterTextureCache();
             VertexBufferObject.resetVBOCache();
         }
         Texture.lastTextureID = -1;
@@ -184,6 +191,8 @@ public final class OptiZombGLChars {
         if (OptiZombConfig.GL_CHARS) {
             GL11.glPushClientAttrib(0x2);
             GL11.glPushAttrib(0x46108);
+            OptiZombRenderDebug.recordClientAttribPush();
+            OptiZombRenderDebug.recordAttribPush();
         } else {
             GL11.glPushClientAttrib(-1);
             GL11.glPushAttrib(1048575);
@@ -197,6 +206,8 @@ public final class OptiZombGLChars {
     public static void endVehicleState() {
         GL11.glPopAttrib();
         GL11.glPopClientAttrib();
+        OptiZombRenderDebug.recordAttribPop();
+        OptiZombRenderDebug.recordClientAttribPop();
         if (OptiZombConfig.GL_CHARS) {
             VertexBufferObject.resetVBOCache();
         }

@@ -1,5 +1,5 @@
 --- vanilla/zombie/iso/IsoCell.java	2026-03-05 19:03:40.901817730 +0000
-+++ src/zombie/iso/IsoCell.java	2026-03-06 23:06:02.456963297 +0000
++++ src/zombie/iso/IsoCell.java	2026-03-07 19:44:21.534369374 +0000
 @@ -1,6 +1,9 @@
  // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
  package zombie.iso;
@@ -108,7 +108,15 @@
      }
  
      private IsoCell.PerPlayerRender getPerPlayerRenderAt(int int0) {
-@@ -773,7 +816,32 @@
+@@ -761,6 +804,7 @@
+     }
+ 
+     private void performRenderTiles(IsoCell.PerPlayerRender perPlayerRenderx, int int1, int int3, long long0) {
++        zombie.optizomb.OptiZombRenderDebug.resetFrameTotals(IsoCamera.frameState.frameCount);
+         IsoGridStack gridStack = perPlayerRenderx.GridStacks;
+         boolean[][] booleans = perPlayerRenderx.FlattenGrassEtc;
+         Shader shader0;
+@@ -773,7 +817,32 @@
              shader1 = m_wallRenderShader;
          }
  
@@ -141,7 +149,7 @@
              IsoCell.s_performance.renderTiles.PperformRenderTilesLayer pperformRenderTilesLayer = IsoCell.s_performance.renderTiles.performRenderTilesLayers
                  .start(int0);
              GridStack = gridStack.Squares.get(int0);
-@@ -790,78 +858,167 @@
+@@ -790,78 +859,169 @@
              }
  
              pperformRenderTilesLayer.renderFloor.start();
@@ -157,7 +165,7 @@
 -                        int4 |= 16;
 -                        if (square0.HasStairs()) {
 -                            int4 |= 4;
-+            // Opt 21: FBO clean frame - blit cached texture + restore bucket lists
++            // Opt 21: FBO clean frame — blit cached texture + restore bucket lists
 +            if (_fboClean && _fboCache != null) {
 +                _fboCache.blitCached(int0);
 +                _fboCache.restoreBuckets(int0, SolidFloor, ShadedFloor, VegetationCorpses, MinusFloorCharacters, ShadowSquares);
@@ -355,13 +363,15 @@
 +                zombie.optizomb.OptiZombFloorPipeline.recordRenderLoopNs(System.nanoTime() - _layerFloorT);
 +                zombie.optizomb.OptiZombFloorPipeline.recordLayer(_fboClean);
 +            }
++            zombie.optizomb.OptiZombRenderDebug.recordLayerBucketSizes(int0, GridStack.size(),
++                VegetationCorpses.size(), MinusFloorCharacters.size(), SolidFloor.size(), ShadowSquares.size());
 +            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_FLOOR);
 +            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
 +            long _layerEnvT = zombie.optizomb.OptiZombConfig.FLOOR_PIPELINE ? System.nanoTime() : 0;
              pperformRenderTilesLayer.renderPuddles.start();
              IsoPuddles.getInstance().render(SolidFloor, int0);
              pperformRenderTilesLayer.renderPuddles.end();
-@@ -904,6 +1061,11 @@
+@@ -904,6 +1064,12 @@
  
              IsoMarkers.instance.renderIsoMarkers(perPlayerRenderx, int0, int3);
              IsoMarkers.instance.renderCircleIsoMarkers(perPlayerRenderx, int0, int3);
@@ -370,10 +380,11 @@
 +            }
 +            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_TILES_ENV);
 +            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_TILES_CHARS);
++            zombie.optizomb.OptiZombRenderDebug.forceGLStateBarrier();
              if (DebugOptions.instance.Terrain.RenderTiles.VegetationCorpses.getValue()) {
                  pperformRenderTilesLayer.vegetationCorpses.start();
  
-@@ -948,10 +1110,25 @@
+@@ -948,10 +1114,25 @@
              IsoMarkers.instance.renderIsoMarkersDeferred(perPlayerRenderx, int0, int3);
              ImprovedFog.endRender();
              pperformRenderTilesLayer.end();
@@ -399,7 +410,7 @@
          boolean boolean0 = Core.getInstance().getOptionCorpseShadows();
  
          for (int int0 = 0; int0 < ShadowSquares.size(); int0++) {
-@@ -980,6 +1157,10 @@
+@@ -980,6 +1161,10 @@
                  }
              }
          }
@@ -410,7 +421,7 @@
      }
  
      private void renderDebugPhysics(int int0) {
-@@ -2232,7 +2413,11 @@
+@@ -2232,7 +2417,11 @@
      }
  
      private void ProcessObjects(Iterator<IsoMovingObject> var1) {

@@ -1,5 +1,5 @@
 --- vanilla/zombie/core/skinnedmodel/model/Model.java	2026-03-05 19:03:50.874786411 +0000
-+++ src/zombie/core/skinnedmodel/model/Model.java	2026-03-06 01:44:34.284298236 +0000
++++ src/zombie/core/skinnedmodel/model/Model.java	2026-03-07 15:55:46.695543290 +0000
 @@ -29,6 +29,10 @@
  import zombie.iso.IsoLightSource;
  import zombie.iso.Vector3;
@@ -11,15 +11,16 @@
  import zombie.scripting.objects.ModelAttachment;
  import zombie.util.Lambda;
  import zombie.util.StringUtils;
-@@ -39,6 +43,7 @@
+@@ -39,6 +43,8 @@
      public String Name;
      public final ModelMesh Mesh;
      public Shader Effect;
 +    private Shader EffectTBO;
++    static boolean skipTBO = false;
      public Object Tag;
      public boolean bStatic = false;
      public Texture tex = null;
-@@ -194,14 +199,41 @@
+@@ -194,14 +200,42 @@
                          this.CreateShader("basicEffect");
                      }
  
@@ -32,8 +33,9 @@
 -                    GL11.glAlphaFunc(516, 0.01F);
 -                    GL11.glBlendFunc(770, 771);
 +                    // BONE_TBO: use TBO shader variant when bone data is in SSBO
++                    // skipTBO is set during outline pass to prevent shader substitution
 +                    Shader shader0;
-+                    boolean useTBO = OptiZombConfig.BONE_TBO && OptiZombBoneTBO.instance.isReady();
++                    boolean useTBO = OptiZombConfig.BONE_TBO && OptiZombBoneTBO.instance.isReady() && !skipTBO;
 +                    if (useTBO) {
 +                        if (this.EffectTBO == null) {
 +                            this.EffectTBO = ShaderManager.instance.getOrCreateShader("basicEffect_tbo", this.bStatic);
@@ -69,7 +71,7 @@
                      if (Core.bDebug && DebugOptions.instance.ModelRenderWireframe.getValue()) {
                          GL11.glPolygonMode(1032, 6913);
                          GL11.glEnable(2848);
-@@ -223,16 +255,31 @@
+@@ -223,16 +257,31 @@
                          GL11.glDisable(2848);
                      } else {
                          if (shader0 != null) {
@@ -105,7 +107,7 @@
                          }
  
                          this.drawMuzzleFlash(modelInstanceRenderData);
-@@ -434,53 +481,7 @@
+@@ -434,53 +483,7 @@
                              vehicleModelInstance = Type.tryCastTo(modelInstance.parent, VehicleModelInstance.class);
                          }
  

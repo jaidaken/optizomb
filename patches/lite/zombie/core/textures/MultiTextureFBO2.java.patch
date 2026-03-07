@@ -1,6 +1,6 @@
---- vanilla/zombie/core/textures/MultiTextureFBO2.java	2026-03-05 19:03:48.751793075 +0000
-+++ src/zombie/core/textures/MultiTextureFBO2.java	2026-03-06 13:27:15.151052388 +0000
-@@ -162,24 +162,36 @@
+--- /home/jaidaken/pz-optizomb/vanilla/zombie/core/textures/MultiTextureFBO2.java	2026-03-05 19:03:48.751793075 +0000
++++ /home/jaidaken/pz-optizomb/src/zombie/core/textures/MultiTextureFBO2.java	2026-03-07 16:34:57.681666109 +0000
+@@ -162,24 +162,35 @@
  
          float float3 = 0.004F * GameTime.instance.getMultiplier() / GameTime.instance.getTrueMultiplier() * (Core.TileScale == 2 ? 1.5F : 1.5F);
          if (!this.bAutoZoom[int0]) {
@@ -16,9 +16,9 @@
 -            if (this.zoom[int0] > this.targetZoom[int0] || Math.abs(this.zoom[int0] - this.targetZoom[int0]) < 0.001F) {
 -                this.zoom[int0] = this.targetZoom[int0];
 +            if (zombie.optizomb.OptiZombConfig.ZOOM) {
-+                if (zombie.optizomb.OptiZombZoom.stepZoomUp(this.zoom, this.targetZoom, int0, float3)) {
-+                    IsoPlayer.players[int0].dirtyRecalcGridStackTime = 2.0F;
-+                }
++                boolean _reached = zombie.optizomb.OptiZombZoom.stepZoomUp(this.zoom, this.targetZoom, int0, float3);
++                // Always recalc grid stack during zoom, but use lower urgency for intermediate frames
++                IsoPlayer.players[int0].dirtyRecalcGridStackTime = _reached ? 2.0F : 0.5F;
 +            } else {
 +                this.zoom[int0] = this.zoom[int0] + float3;
 +                IsoPlayer.players[int0].dirtyRecalcGridStackTime = 2.0F;
@@ -34,9 +34,8 @@
 -            if (this.zoom[int0] < this.targetZoom[int0] || Math.abs(this.zoom[int0] - this.targetZoom[int0]) < 0.001F) {
 -                this.zoom[int0] = this.targetZoom[int0];
 +            if (zombie.optizomb.OptiZombConfig.ZOOM) {
-+                if (zombie.optizomb.OptiZombZoom.stepZoomDown(this.zoom, this.targetZoom, int0, float3)) {
-+                    IsoPlayer.players[int0].dirtyRecalcGridStackTime = 2.0F;
-+                }
++                boolean _reached = zombie.optizomb.OptiZombZoom.stepZoomDown(this.zoom, this.targetZoom, int0, float3);
++                IsoPlayer.players[int0].dirtyRecalcGridStackTime = _reached ? 2.0F : 0.5F;
 +            } else {
 +                this.zoom[int0] = this.zoom[int0] - float3;
 +                IsoPlayer.players[int0].dirtyRecalcGridStackTime = 2.0F;

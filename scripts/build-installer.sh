@@ -27,7 +27,7 @@ echo "=== OptiZomb Installer Build (tier: $TIER, v$VERSION) ==="
 
 # Step 1: Always rebuild to ensure version and patches are current
 echo "Building classes..."
-bash "$PROJECT_DIR/scripts/build.sh" "$TIER"
+bash "$PROJECT_DIR/scripts/build-minimal.sh" "$TIER"
 echo ""
 
 # Step 2: Generate bsdiff patches - ONLY for files we actually modified

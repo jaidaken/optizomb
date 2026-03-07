@@ -63,6 +63,30 @@ if [ "$ERRORS" -gt 0 ]; then
 fi
 
 CLASS_COUNT=$(find "$BUILD_DIR/classes" -name "*.class" 2>/dev/null | wc -l)
+
+# Ensure runtime config exists
+RUNTIME_DIR="$PROJECT_DIR/runtime"
+if [ -d "$RUNTIME_DIR" ]; then
+    cat > "$RUNTIME_DIR/optizomb.properties" <<'PROPS'
+# OptiZomb feature flags
+opt.glfix=true
+opt.glchars=true
+opt.bonetbo=true
+opt.tileschars=true
+opt.batchmerge=true
+opt.blood=true
+opt.shadows=true
+opt.items=true
+opt.floorpipeline=true
+opt.floorfbo=false
+opt.diagnostics=true
+
+# Zombie render cap (vanilla=510, default=4096)
+opt.zombiecap=4096
+PROPS
+    echo "Generated runtime/optizomb.properties"
+fi
+
 echo ""
 echo "=== Minimal Build Complete ==="
 echo "Classes: $CLASS_COUNT (only modified - rest stays as vanilla bytecode)"

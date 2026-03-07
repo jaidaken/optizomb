@@ -1,18 +1,22 @@
 --- vanilla/zombie/core/skinnedmodel/shader/Shader.java	2026-03-05 19:03:49.634790303 +0000
-+++ src/zombie/core/skinnedmodel/shader/Shader.java	2026-03-05 23:40:59.743656516 +0000
-@@ -20,6 +20,10 @@
++++ src/zombie/core/skinnedmodel/shader/Shader.java	2026-03-07 15:51:10.201230467 +0000
+@@ -20,6 +20,11 @@
  import zombie.core.textures.SmartTexture;
  import zombie.core.textures.Texture;
  import zombie.debug.DebugOptions;
 +import zombie.debug.DebugLog;
++import zombie.iso.Vector2;
 +import zombie.optizomb.OptiZombBoneTBOLog;
 +import zombie.optizomb.OptiZombConfig;
 +import zombie.optizomb.OptiZombGLChars;
  import zombie.iso.IsoMovingObject;
  import zombie.network.GameServer;
  import zombie.network.ServerGUI;
-@@ -79,12 +83,31 @@
+@@ -77,14 +82,34 @@
+     private static FloatBuffer floatBuffer;
+     private static final int MAX_BONES = 64;
      private static final Vector3f tempVec3f = new Vector3f();
++    private static final Vector2 tempUVScale = new Vector2();
      private final FloatBuffer floatBuffer2 = BufferUtils.createFloatBuffer(16);
  
 +    // GL_CHARS: light uniform ID arrays for O(1) lookup instead of if-else chains
@@ -43,7 +47,7 @@
      }
  
      public boolean isStatic() {
-@@ -116,6 +139,19 @@
+@@ -116,6 +141,19 @@
          this.Light3Direction = ARBShaderObjects.glGetUniformLocationARB(int0, "Light3Direction");
          this.Light4Colour = ARBShaderObjects.glGetUniformLocationARB(int0, "Light4Colour");
          this.Light4Direction = ARBShaderObjects.glGetUniformLocationARB(int0, "Light4Direction");
@@ -63,7 +67,7 @@
          this.TintColour = ARBShaderObjects.glGetUniformLocationARB(int0, "TintColour");
          this.Texture0 = ARBShaderObjects.glGetUniformLocationARB(int0, "Texture0");
          this.TexturePainColor = ARBShaderObjects.glGetUniformLocationARB(int0, "TexturePainColor");
-@@ -144,6 +180,20 @@
+@@ -144,6 +182,20 @@
          this.TextureReflectionB = ARBShaderObjects.glGetUniformLocationARB(int0, "TextureReflectionB");
          this.ReflectionParam = ARBShaderObjects.glGetUniformLocationARB(int0, "ReflectionParam");
          this.UVScale = ARBShaderObjects.glGetUniformLocationARB(int0, "UVScale");
@@ -84,7 +88,7 @@
          this.m_shaderProgram.setSamplerUnit("Texture", 0);
          if (this.Texture0 != -1) {
              ARBShaderObjects.glUniform1iARB(this.Texture0, 0);
-@@ -209,25 +259,70 @@
+@@ -209,25 +261,75 @@
          return this.m_shaderProgram.getShaderID();
      }
  
@@ -119,6 +123,11 @@
 +
 +    public static void resetCharacterTextureCache() {
 +        lastCharacterTexture = null;
++    }
++
++    public static void resetLastBoundAndTextureCache() {
++        resetLastBound();
++        resetCharacterTextureCache();
      }
  
      public void End() {
@@ -156,7 +165,7 @@
          Texture texture0 = modelInstanceRenderData.tex != null ? modelInstanceRenderData.tex : modelInstanceRenderData.model.tex;
          if (DebugOptions.instance.IsoSprite.CharacterMipmapColors.getValue()) {
              Texture texture1 = texture0 instanceof SmartTexture ? ((SmartTexture)texture0).result : texture0;
-@@ -236,7 +331,18 @@
+@@ -236,7 +338,23 @@
              }
          }
  
@@ -165,6 +174,11 @@
 +            if (texture0 != lastCharacterTexture) {
 +                texture0.bind();
 +                lastCharacterTexture = texture0;
++                // Update UVScale for NPOT textures (modded content may use non-power-of-two dimensions)
++                if (this.UVScale > 0) {
++                    Vector2 uv = texture0.getUVScale(tempUVScale);
++                    ARBShaderObjects.glUniform2fARB(this.UVScale, uv.x, uv.y);
++                }
 +                OptiZombGLChars.onTextureCacheMiss();
 +            } else {
 +                OptiZombGLChars.onTextureCacheHit();
@@ -176,7 +190,7 @@
          this.setDepthBias(modelInstanceRenderData.depthBias / 50.0F);
          this.setAmbient(float0, float1, float2);
          this.setLightingAmount(1.0F);
-@@ -270,6 +376,101 @@
+@@ -270,6 +388,101 @@
          }
      }
  
@@ -278,7 +292,7 @@
      public void updateAlpha(IsoGameCharacter character, int int0) {
          if (character != null) {
              this.setAlpha(character.getAlpha(int0));
-@@ -529,26 +730,53 @@
+@@ -529,26 +742,53 @@
  
      public void setHueShift(float float0) {
          if (this.HueChange > 0) {

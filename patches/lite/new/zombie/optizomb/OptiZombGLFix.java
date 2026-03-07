@@ -63,18 +63,25 @@ public final class OptiZombGLFix {
         if (OptiZombConfig.GL_FIX) {
             if (!confirmedVehicleTex) {
                 confirmedVehicleTex = true;
-                DebugLog.General.println("[OptiZomb] GL_FIX active: vehicle texture optimization applied (1 glTexEnvi instead of 8)");
+                DebugLog.General.println("[OptiZomb] GL_FIX active: vehicle texture optimization applied");
             }
-            GL11.glTexEnvi(8960, 8704, 7681);
-            skippedTexEnvi += 7;
+            // glTexEnvi must be called per texture unit (it applies to the ACTIVE unit)
             shader.setTexture(vmi.tex, "Texture0", 0);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureRust, "TextureRust", 1);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureMask, "TextureMask", 2);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureLights, "TextureLights", 3);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureDamage1Overlay, "TextureDamage1Overlay", 4);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureDamage1Shell, "TextureDamage1Shell", 5);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureDamage2Overlay, "TextureDamage2Overlay", 6);
+            GL11.glTexEnvi(8960, 8704, 7681);
             shader.setTexture(vmi.textureDamage2Shell, "TextureDamage2Shell", 7);
+            GL11.glTexEnvi(8960, 8704, 7681);
         } else {
             shader.setTexture(vmi.tex, "Texture0", 0);
             GL11.glTexEnvi(8960, 8704, 7681);

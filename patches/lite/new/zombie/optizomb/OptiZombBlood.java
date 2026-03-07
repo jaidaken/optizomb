@@ -88,14 +88,6 @@ public final class OptiZombBlood {
             for (int i = 0; i < arrayList.size(); i++) {
                 IsoFloorBloodSplat splat = arrayList.get(i);
 
-                // Phase A: Handle fade state mutation BEFORE offscreen check
-                int preFade = splat.fade;
-                if (preFade > 0) {
-                    if (--splat.fade == 0) {
-                        splat.chunk.FloorBloodSplatsFade.remove(splat);
-                    }
-                }
-
                 // Phase A: Early offscreen culling
                 float worldX = splat.chunk.wx * 10 + splat.x;
                 float worldY = splat.chunk.wy * 10 + splat.y;
@@ -154,9 +146,12 @@ public final class OptiZombBlood {
                     inf.a *= 0.25f;
                 }
 
-                // Fade alpha (using pre-decrement value for visual consistency)
-                if (preFade > 0) {
-                    inf.a = inf.a * (preFade / (PerformanceSettings.getLockFPS() * 5.0f));
+                // Fade alpha: match vanilla order (apply fade then decrement)
+                if (splat.fade > 0) {
+                    inf.a = inf.a * (splat.fade / (PerformanceSettings.getLockFPS() * 5.0f));
+                    if (--splat.fade == 0) {
+                        splat.chunk.FloorBloodSplatsFade.remove(splat);
+                    }
                 }
 
                 // Phase B: Cached tile light lookup

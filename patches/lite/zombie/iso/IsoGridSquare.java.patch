@@ -1,5 +1,5 @@
 --- vanilla/zombie/iso/IsoGridSquare.java	2026-03-05 19:03:37.376828807 +0000
-+++ src/zombie/iso/IsoGridSquare.java	2026-03-06 01:48:26.271564148 +0000
++++ src/zombie/iso/IsoGridSquare.java	2026-03-07 00:01:25.386042489 +0000
 @@ -28,6 +28,8 @@
  import zombie.GameWindow;
  import zombie.IndieGL;
@@ -9,16 +9,81 @@
  import zombie.SandboxOptions;
  import zombie.SoundManager;
  import zombie.ZomboidBitFlag;
-@@ -158,6 +160,8 @@
+@@ -158,6 +160,15 @@
      private final boolean[] playerCutawayFlags = new boolean[4];
      private final long[] playerCutawayFlagLockUntilTimes = new long[4];
      private final boolean[] targetPlayerCutawayFlags = new boolean[4];
 +    int occlusionCacheFrame = -1;
 +    boolean occlusionCacheResult;
++    // Opt CUTAWAY: per-square cutaway cache (keyed by player tile position)
++    public int cutawayCachedPlayerX = Integer.MIN_VALUE;
++    public int cutawayCachedPlayerY = Integer.MIN_VALUE;
++    public boolean cutawayCachedResult;
++    // Opt 20d: static bucket bits cache
++    public byte staticBucketBits;
++    public boolean staticBucketDirty = true;
      private final boolean[] playerIsDissolvedFlags = new boolean[4];
      private final long[] playerIsDissolvedFlagLockUntilTimes = new long[4];
      private final boolean[] targetPlayerIsDissolvedFlags = new boolean[4];
-@@ -6484,8 +6488,10 @@
+@@ -882,6 +893,9 @@
+         this.MovingObjects.clear();
+         this.Objects.clear();
+         this.WorldObjects.clear();
++        this.staticBucketDirty = true;
++        this.cutawayCachedPlayerX = Integer.MIN_VALUE;
++        this.cutawayCachedPlayerY = Integer.MIN_VALUE;
+         this.hasTypes.clear();
+         this.table = null;
+         this.Properties.Clear();
+@@ -2185,6 +2199,7 @@
+ 
+         if (!this.StaticMovingObjects.contains(deadBody)) {
+             this.StaticMovingObjects.add(deadBody);
++            this.staticBucketDirty = true;
+         }
+ 
+         deadBody.addToWorld();
+@@ -2351,6 +2366,7 @@
+                                 }
+ 
+                                 this.WorldObjects.add((IsoWorldInventoryObject)object);
++                                this.staticBucketDirty = true;
+                                 object.square.chunk.recalcHashCodeObjects();
+                             }
+                         }
+@@ -2414,6 +2430,7 @@
+                             }
+ 
+                             this.StaticMovingObjects.add(movingObject);
++                            this.staticBucketDirty = true;
+                             this.recalcHashCodeObjects();
+                         }
+                     }
+@@ -4929,6 +4946,7 @@
+             worldInventoryObject.setName(item.getName());
+             this.Objects.add(worldInventoryObject);
+             this.WorldObjects.add(worldInventoryObject);
++            this.staticBucketDirty = true;
+             worldInventoryObject.square.chunk.recalcHashCodeObjects();
+             if (GameClient.bClient) {
+                 worldInventoryObject.transmitCompleteItemToServer();
+@@ -4957,6 +4975,7 @@
+                 worldInventoryObject.setKeyId(item.getKeyId());
+                 this.Objects.add(worldInventoryObject);
+                 this.WorldObjects.add(worldInventoryObject);
++                this.staticBucketDirty = true;
+                 worldInventoryObject.square.chunk.recalcHashCodeObjects();
+                 item.setWorldItem(worldInventoryObject);
+                 worldInventoryObject.addToWorld();
+@@ -5915,6 +5934,7 @@
+ 
+     public void RecalcProperties() {
+         this.CachedIsFree = false;
++        this.staticBucketDirty = true;
+         String string0 = null;
+         if (this.Properties.Is("waterAmount")) {
+             string0 = this.Properties.Val("waterAmount");
+@@ -6484,8 +6504,10 @@
                  IndieGL.glColorMask(false, false, false, false);
                  Texture.getWhite().renderwallnw(float0, float1, 64 * Core.TileScale, 32 * Core.TileScale, -1, -1, -1, -1, -1, -1);
                  IndieGL.glColorMask(true, true, true, true);
@@ -31,7 +96,7 @@
                  IndieGL.glStencilFunc(514, short0, 127);
                  IndieGL.glStencilOp(7680, 7680, 7680);
                  ColorInfo colorInfo = this.lightInfo[IsoCamera.frameState.playerIndex];
-@@ -6601,7 +6607,22 @@
+@@ -6601,7 +6623,22 @@
              int int1 = this.getRoomID();
              if (int1 != -1) {
                  int int2 = IsoWorld.instance.CurrentCell.GetEffectivePlayerRoomId();
@@ -55,7 +120,216 @@
                      boolean3 = false;
                      float1 = 1.0F;
                      float2 = 1.0F;
-@@ -6928,7 +6949,21 @@
+@@ -6775,6 +6812,208 @@
+         return byte0;
+     }
+ 
++    // Opt 20: optimized floor rendering (20a-20h)
++    // Opt 50: hoisted params from per-layer (IsoCell) — avoids per-square volatile reads
++    int renderFloorInternal(Shader shader, int int0, int shaderID, int floorLayerLoc,
++            IsoGridSquare square1, boolean boolean1, int effectiveRoomId,
++            boolean renderTiles, boolean useDefColor, boolean debugSafeHouse) {
++        ColorInfo colorInfo = this.lightInfo[int0];
++        boolean boolean0 = this.lighting[int0].bCouldSee();
++        float float0 = this.lighting[int0].darkMulti();
++        boolean boolean2 = debugSafeHouse && zombie.iso.areas.SafeHouse.isSafeHouse(this, null, true) != null;
++        boolean boolean3 = true;
++        float float1 = 1.0F;
++        float float2 = 1.0F;
++        if (square1 != null) {
++            int int1 = this.getRoomID();
++            if (int1 != -1) {
++                // 20b: reuse occlusion cache from TILES_CHARS
++                boolean _occluded;
++                int _occKey = (IsoCamera.frameState.frameCount << 2) | int0;
++                if (this.occlusionCacheFrame == _occKey) {
++                    _occluded = this.occlusionCacheResult;
++                } else {
++                    _occluded = IsoWorld.instance.CurrentCell.CanBuildingSquareOccludePlayer(this, int0);
++                    this.occlusionCacheFrame = _occKey;
++                    this.occlusionCacheResult = _occluded;
++                }
++                if (effectiveRoomId == -1 && _occluded) {
++                    boolean3 = false;
++                    float1 = 1.0F;
++                    float2 = 1.0F;
++                } else if (!boolean0 && int1 != effectiveRoomId && float0 < 0.5F) {
++                    boolean3 = false;
++                    float1 = 0.0F;
++                    float2 = float0 * 2.0F;
++                }
++            }
++        }
++
++        IsoWaterGeometry waterGeometry = this.z == 0 ? this.getWater() : null;
++        boolean boolean4 = waterGeometry != null && waterGeometry.bShore;
++        float float3 = waterGeometry == null ? 0.0F : waterGeometry.depth[0];
++        float float4 = waterGeometry == null ? 0.0F : waterGeometry.depth[3];
++        float float5 = waterGeometry == null ? 0.0F : waterGeometry.depth[2];
++        float float6 = waterGeometry == null ? 0.0F : waterGeometry.depth[1];
++        byte byte0 = 0;
++        int int3 = this.Objects.size();
++        IsoObject[] objects = this.Objects.getElements();
++
++        // Opt 20h/50: FloorShaper + colorInfo hoisted from per-layer
++        ColorInfo _floorColorInfo = useDefColor ? defColorInfo : colorInfo;
++        FloorShaperAttachedSprites _attachedShaper = FloorShaperAttachedSprites.instance;
++        boolean _shaperConfigured = false;
++        for (int int4 = 0; int4 < int3; int4++) {
++            IsoObject object0 = objects[int4];
++            if (boolean1 && (object0.highlightFlags & 1) == 0) {
++                object0.setHighlighted(true);
++                if (NonPvpZone.getNonPvpZone(this.x, this.y) != null) {
++                    object0.setHighlightColor(0.6F, 0.6F, 1.0F, 0.5F);
++                } else {
++                    object0.setHighlightColor(1.0F, 0.6F, 0.6F, 0.5F);
++                }
++            }
++
++            if (boolean2) {
++                object0.setHighlighted(true);
++                object0.setHighlightColor(1.0F, 0.0F, 0.0F, 1.0F);
++            }
++
++            boolean boolean5 = true;
++            if (object0.sprite != null && !object0.sprite.solidfloor && object0.sprite.renderLayer != 1) {
++                boolean5 = false;
++                byte0 |= 4;
++            }
++
++            if (object0 instanceof IsoFire || object0 instanceof IsoCarBatteryCharger) {
++                boolean5 = false;
++                byte0 |= 4;
++            }
++
++            if (!boolean5) {
++                boolean boolean6 = object0.sprite != null && (object0.sprite.isBush || object0.sprite.canBeRemoved || object0.sprite.attachedFloor);
++                if (this.bFlattenGrassEtc && boolean6) {
++                    byte0 |= 2;
++                }
++            } else {
++                IndieGL.glAlphaFunc(516, 0.0F);
++                object0.setTargetAlpha(int0, float2);
++                if (boolean3) {
++                    object0.setAlpha(int0, float1);
++                }
++
++                if (renderTiles && object0.sprite != null) {
++                    // 20h: lazy FloorShaper configuration (once per square, not per object)
++                    if (!_shaperConfigured) {
++                        _shaperConfigured = true;
++                        zombie.optizomb.OptiZombFloorPipeline.configureShapers(
++                            this, int0, boolean4, float3, float4, float5, float6, _attachedShaper);
++                    }
++
++                    // 20g: select FloorShaper directly (no Object cast)
++                    FloorShaper _mainShaper;
++                    if (!object0.getProperties().Is(IsoFlagType.diamondFloor) && !object0.getProperties().Is(IsoFlagType.water)) {
++                        _mainShaper = FloorShaperDeDiamond.instance;
++                    } else {
++                        _mainShaper = FloorShaperDiamond.instance;
++                    }
++
++                    // Opt 49: direct render (flattened call chain), fallback to vanilla
++                    if (!zombie.optizomb.OptiZombFloorPipeline.renderFloorTileDirect(
++                            object0, _floorColorInfo, shaderID, floorLayerLoc, _mainShaper)) {
++                        object0.renderFloorTile(
++                            this.x, this.y, this.z,
++                            _floorColorInfo, true, false,
++                            shaderID, floorLayerLoc,
++                            _mainShaper, _attachedShaper
++                        );
++                    } else {
++                        // Direct render handled main sprite — still need attached/overlay
++                        object0.renderAttachedAndOverlaySpritesFloor(
++                            this.x, this.y, this.z,
++                            _floorColorInfo, true, false,
++                            shaderID, floorLayerLoc, _attachedShaper
++                        );
++                    }
++                }
++
++                byte0 |= 1;
++                if ((object0.highlightFlags & 1) == 0) {
++                    byte0 |= 8;
++                }
++
++                if ((object0.highlightFlags & 2) != 0) {
++                    object0.highlightFlags &= -4;
++                }
++            }
++        }
++
++        // Rain splash (20e: bracket with StartShader(null) / restore)
++        if ((this.getCell().rainIntensity > 0 || RainManager.isRaining() && RainManager.RainIntensity > 0.0F)
++            && this.isExteriorCache
++            && !this.isVegitationCache
++            && this.isSolidFloorCache
++            && this.isCouldSee(int0)) {
++            if (!IsoCamera.frameState.Paused) {
++                int int9 = this.getCell().rainIntensity == 0
++                    ? (int)Math.min(Math.floor(RainManager.RainIntensity / 0.2F) + 1.0, 5.0)
++                    : this.getCell().rainIntensity;
++                if (this.splashFrame < 0.0F && Rand.Next(Rand.AdjustForFramerate((int)(5.0F / int9) * 100)) == 0) {
++                    this.splashFrame = 0.0F;
++                }
++            }
++
++            if (this.splashFrame >= 0.0F) {
++                int int10 = (int)(this.splashFrame * 4.0F);
++                if (rainsplashCache[int10] == null) {
++                    rainsplashCache[int10] = "RainSplash_00_" + int10;
++                }
++
++                Texture texture = Texture.getSharedTexture(rainsplashCache[int10]);
++                if (texture != null) {
++                    float float7 = IsoUtils.XToScreen(this.x + this.splashX, this.y + this.splashY, this.z, 0) - IsoCamera.frameState.OffX;
++                    float float8 = IsoUtils.YToScreen(this.x + this.splashX, this.y + this.splashY, this.z, 0) - IsoCamera.frameState.OffY;
++                    float7 -= texture.getWidth() / 2 * Core.TileScale;
++                    float8 -= texture.getHeight() / 2 * Core.TileScale;
++                    float float9 = 0.6F * (this.getCell().rainIntensity > 0 ? 1.0F : RainManager.RainIntensity);
++                    float float10 = Core.getInstance().RenderShader != null ? 0.6F : 1.0F;
++                    // Opt 20e: disable floor shader for rain splash
++                    IndieGL.StartShader(null);
++                    SpriteRenderer.instance
++                        .render(
++                            texture,
++                            float7,
++                            float8,
++                            texture.getWidth() * Core.TileScale,
++                            texture.getHeight() * Core.TileScale,
++                            0.8F * colorInfo.r,
++                            0.9F * colorInfo.g,
++                            1.0F * colorInfo.b,
++                            float9 * float10,
++                            null
++                        );
++                    // Opt 20e: restore floor shader
++                    IndieGL.StartShader(shader, int0);
++                }
++
++                if (!IsoCamera.frameState.Paused && this.splashFrameNum != IsoCamera.frameState.frameCount) {
++                    this.splashFrame = this.splashFrame + 0.08F * (30.0F / PerformanceSettings.getLockFPS());
++                    if (this.splashFrame >= 1.0F) {
++                        this.splashX = Rand.Next(0.1F, 0.9F);
++                        this.splashY = Rand.Next(0.1F, 0.9F);
++                        this.splashFrame = -1.0F;
++                    }
++
++                    this.splashFrameNum = IsoCamera.frameState.frameCount;
++                }
++            }
++        } else {
++            this.splashFrame = -1.0F;
++        }
++
++        return byte0;
++    }
++
+     private boolean isSpriteOnSouthOrEastWall(IsoObject object) {
+         if (object instanceof IsoBarricade) {
+             return object.getDir() == IsoDirections.S || object.getDir() == IsoDirections.E;
+@@ -6928,7 +7167,21 @@
              ColorInfo colorInfo = this.lightInfo[int1];
              boolean boolean0 = this.lighting[int1].bCouldSee();
              float float0 = this.lighting[int1].darkMulti();
@@ -78,13 +352,13 @@
              colorInfo.a = 1.0F;
              defColorInfo.r = 1.0F;
              defColorInfo.g = 1.0F;
-@@ -7000,8 +7035,17 @@
+@@ -7000,8 +7253,17 @@
                      objectType = object1.sprite.getType();
                  }
  
 +                short _rf = 0;
 +                if (OptiZombConfig.TILES_CHARS) {
-+                    if (object1.renderFlagsDirty) {
++                    if (object1.renderFlagsDirty || object1.sprite != object1.renderFlagsSprite) {
 +                        object1.computeRenderFlags();
 +                    }
 +                    _rf = object1.renderFlags;
@@ -97,7 +371,7 @@
                      boolean12 = false;
                  }
  
-@@ -7009,11 +7053,11 @@
+@@ -7009,11 +7271,11 @@
                      boolean12 = !boolean13;
                  }
  
@@ -111,7 +385,7 @@
                  if ((!boolean13 || boolean14 && this.bFlattenGrassEtc) && (boolean13 || !boolean14 || !this.bFlattenGrassEtc)) {
                      if (object1.sprite != null
                          && (objectType == IsoObjectType.WestRoofB || objectType == IsoObjectType.WestRoofM || objectType == IsoObjectType.WestRoofT)
-@@ -7024,22 +7068,25 @@
+@@ -7024,22 +7286,25 @@
  
                      boolean boolean15 = objectType == IsoObjectType.doorFrW
                          || objectType == IsoObjectType.doorW
@@ -145,3 +419,19 @@
                                  boolean12 = !bWallCutawayN;
                              }
                          } else {
+@@ -7832,6 +8097,7 @@
+         }
+ 
+         this.DeferedCharacters.add(character);
++        this.staticBucketDirty = true;
+     }
+ 
+     public boolean isCacheIsFree() {
+@@ -8714,6 +8980,7 @@
+ 
+     public void setHasFlies(boolean boolean0) {
+         this.bHasFlies = boolean0;
++        this.staticBucketDirty = true;
+     }
+ 
+     public float getLightLevel(int int0) {

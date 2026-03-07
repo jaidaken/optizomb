@@ -11,7 +11,7 @@ opt.batchmerge=true
 
 # Floor rendering
 opt.floorpipeline=true
-opt.floorfbo=true
+opt.floorfbo=false
 
 # Environment rendering
 opt.blood=true

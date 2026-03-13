@@ -81,7 +81,10 @@ public class OptiZombInstaller extends JFrame {
 
         JLabel subtitle = new JLabel("<html><center>"
             + "GPU optimizations only - safe on any vanilla server.<br>"
-            + "No gameplay or simulation changes.</center></html>");
+            + "No gameplay or simulation changes.<br><br>"
+            + "<b>Note:</b> Most optimizations are disabled by default while we overhaul<br>"
+            + "them for stability. Only glfix (GPU error check removal) is enabled.<br>"
+            + "You can enable others in optizomb.properties at your own risk.</center></html>");
         subtitle.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel headerPanel = new JPanel(new BorderLayout(0, 5));
@@ -119,7 +122,10 @@ public class OptiZombInstaller extends JFrame {
         JPanel changesPanel = new JPanel(new BorderLayout());
         changesPanel.setBorder(BorderFactory.createTitledBorder("What This Changes"));
         JTextArea changesText = new JTextArea(
-            "  1. GPU error check removal (biggest win)\n"
+            "  ENABLED by default:\n"
+            + "  1. GPU error check removal (biggest win - glfix)\n"
+            + "\n"
+            + "  DISABLED by default (being overhauled for stability):\n"
             + "  2. Character rendering pipeline caching\n"
             + "  3. Bone data batching (single GPU upload)\n"
             + "  4. Object classification caching\n"
@@ -138,7 +144,9 @@ public class OptiZombInstaller extends JFrame {
             + "  17. Fog row skip at distance\n"
             + "  18. StartFrame profiling\n"
             + "  19. Separation physics throttling\n"
-            + "  20. AI throttling at distance"
+            + "  20. AI throttling at distance\n"
+            + "\n"
+            + "  Edit optizomb.properties to enable individual optimizations."
         );
         changesText.setEditable(false);
         changesText.setBackground(root.getBackground());

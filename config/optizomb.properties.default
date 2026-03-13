@@ -1,42 +1,46 @@
-# OptiZomb Lite v0.1 - Feature Flags
-# Set any option to false to disable that optimization group.
+# OptiZomb Lite v0.2 - Feature Flags
+# Set any option to true to enable that optimization group.
 # Dependencies: opt.glchars requires opt.glfix, opt.bonetbo requires opt.glchars.
+#
+# NOTE: Most optimizations are disabled by default while we overhaul them
+# for stability. Only glfix (the biggest performance win) is enabled.
+# Enable others at your own risk -- they may cause visual glitches.
 
 # Core rendering
 opt.glfix=true
-opt.glchars=true
-opt.bonetbo=true
-opt.tileschars=true
-opt.batchmerge=true
+opt.glchars=false
+opt.bonetbo=false
+opt.tileschars=false
+opt.batchmerge=false
 
 # Floor rendering
-opt.floorpipeline=true
+opt.floorpipeline=false
 opt.floorfbo=false
 
 # Environment rendering
-opt.blood=true
-opt.shadows=true
-opt.fog=true
+opt.blood=false
+opt.shadows=false
+opt.fog=false
 
 # Scene management
-opt.scenecull=true
-opt.bonelod=true
-opt.cutaway=true
+opt.scenecull=false
+opt.bonelod=false
+opt.cutaway=false
 
 # Items & containers
-opt.items=true
+opt.items=false
 
 # Visual fixes
-opt.terrain=true
-opt.zoom=true
+opt.terrain=false
+opt.zoom=false
 
 # Throttles
-opt.separatethrottle=true
-opt.aithrottle=true
+opt.separatethrottle=false
+opt.aithrottle=false
 
 # Diagnostics
-opt.diagnostics=true
-opt.startframe=true
+opt.diagnostics=false
+opt.startframe=false
 
 # Zombie render cap (vanilla = 510, OptiZomb default = 4096)
 # opt.zombiecap=4096

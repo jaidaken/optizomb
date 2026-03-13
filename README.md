@@ -1,6 +1,8 @@
 # OptiZomb
 
-Performance optimization mod for Project Zomboid. 2.5-3x FPS improvement at 500+ zombies.
+Performance optimization mod for Project Zomboid. 20 toggleable client-only rendering optimizations -- safe on any vanilla server. No gameplay or simulation changes.
+
+> **Status:** We are overhauling the optimizations for stability. Only **glfix** (GPU error check removal -- the biggest single performance win) is enabled by default. Other optimizations can be enabled individually in `optizomb.properties` at your own risk. We will re-enable them as they are verified stable.
 
 ## Install
 
@@ -13,9 +15,10 @@ To uninstall, run the installer again and click **Uninstall**.
 
 ## What It Does
 
-20 toggleable client-only rendering optimizations — safe on any vanilla server. No gameplay or simulation changes.
+**Enabled by default:**
+- GPU pipeline stall removal (glGetError bypass) -- **glfix**
 
-- GPU pipeline stall removal (glGetError bypass)
+**Disabled by default (being overhauled):**
 - GL state caching (shader bind, VBO/EBO, camera)
 - Bone matrix TBO (per-zombie uniform upload → single GPU buffer)
 - Render flag bitmasks (cached instanceof checks)
@@ -33,7 +36,7 @@ To uninstall, run the installer again and click **Uninstall**.
 
 ## Configuration
 
-Edit `optizomb.properties` in your PZ directory to toggle individual optimizations. All are enabled by default.
+Edit `optizomb.properties` in your PZ directory to toggle individual optimizations. Most are disabled by default during the stability overhaul -- enable them at your own risk.
 
 ## Requirements
 

@@ -1,0 +1,14 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/CollisionManager.java	2026-03-28 15:50:16.811736555 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/CollisionManager.java	2026-03-28 16:11:52.241129237 +0000
+@@ -324,7 +324,11 @@
+ 
+         ArrayList<IsoMovingObject> arrayList3 = IsoWorld.instance.CurrentCell.getObjectList();
+         int int13 = ((List)arrayList3).size();
++        long _postUpdStart = zombie.core.Core.bDebug ? System.nanoTime() : 0;
+         MovingObjectUpdateScheduler.instance.postupdate();
++        if (zombie.core.Core.bDebug) {
++            zombie.optizomb.OptiZombPerfLog.recordPostupdateTime(System.nanoTime() - _postUpdStart);
++        }
+         IsoMovingObject.treeSoundMgr.update();
+         ZombieFootstepManager.instance.update();
+         ZombieThumpManager.instance.update();

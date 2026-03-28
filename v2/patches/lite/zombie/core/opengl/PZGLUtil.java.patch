@@ -1,0 +1,24 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/core/opengl/PZGLUtil.java	2026-03-28 15:50:16.943613851 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/core/opengl/PZGLUtil.java	2026-03-28 16:01:40.788210357 +0000
+@@ -8,11 +8,13 @@
+ import org.lwjglx.opengl.OpenGLException;
+ import org.lwjglx.opengl.Util;
+ import zombie.core.skinnedmodel.model.Model;
++import zombie.optizomb.OptiZombGLFix;
+ 
+ public class PZGLUtil {
+     static int test = 0;
+ 
+     public static void checkGLErrorThrow(String string, Object... objects) throws OpenGLException {
++        if (OptiZombGLFix.GL_FIX) { OptiZombGLFix.onSkipErrorThrow(); return; }
+         int int0 = GL11.glGetError();
+         if (int0 != 0) {
+             test++;
+@@ -39,6 +41,7 @@
+     }
+ 
+     public static boolean checkGLError(boolean boolean0) {
++        if (OptiZombGLFix.GL_FIX) { OptiZombGLFix.onSkipErrorCheck(); return true; }
+         try {
+             Util.checkGLError();
+             return true;

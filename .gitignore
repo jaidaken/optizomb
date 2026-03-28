@@ -1,0 +1,44 @@
+# === v1 (old decompile) ===
+v1/vanilla/
+v1/src/
+v1/build/
+
+# === v2 (new decompile) ===
+v2/vanilla/
+v2/src/
+v2/build/
+
+# Game runtime (~7GB, copied from Steam)
+runtime/
+
+# Test data (regenerated)
+userdata/
+userdata-vanilla/
+
+# Dependency JARs (copied from game)
+libs/*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Tools - JDK binary (324MB)
+tools/zulu-jdk-17.0.1/
+
+# Tools - decompiler build artifacts
+tools/ZomboidDecompiler-src/build/
+tools/ZomboidDecompiler-src/.gradle/
+tools/ZomboidDecompiler-src/logs/
+tools/ZomboidDecompiler-src/output/
+
+# OS
+.DS_Store
+Thumbs.db
+logs/

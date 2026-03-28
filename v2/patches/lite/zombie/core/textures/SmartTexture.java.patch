@@ -1,0 +1,19 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/core/textures/SmartTexture.java	2026-03-28 15:50:16.977310882 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/core/textures/SmartTexture.java	2026-03-28 16:04:42.830947239 +0000
+@@ -16,6 +16,7 @@
+ import zombie.core.utils.WrappedBuffer;
+ import zombie.debug.DebugLog;
+ import zombie.util.Lambda;
++import zombie.optizomb.OptiZombGLFix;
+ import zombie.util.list.PZArrayUtil;
+ 
+ public class SmartTexture extends Texture {
+@@ -376,7 +377,7 @@
+ 
+     public void calculate() {
+         synchronized (this) {
+-            if (Core.bDebug) {
++            if (Core.bDebug && !OptiZombGLFix.GL_FIX) {
+                 GL11.glGetError();
+             }
+ 

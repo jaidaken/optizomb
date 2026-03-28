@@ -1,48 +1,34 @@
 # OptiZomb
 
-Performance optimization mod for Project Zomboid. 20 toggleable client-only rendering optimizations -- safe on any vanilla server. No gameplay or simulation changes.
+Performance optimization mod for Project Zomboid Build 41. 20 toggleable client-only rendering optimizations - safe on any vanilla server. No gameplay or simulation changes.
 
-> **Status:** We are overhauling the optimizations for stability. Only **glfix** (GPU error check removal -- the biggest single performance win) is enabled by default. Other optimizations can be enabled individually in `optizomb.properties` at your own risk. We will re-enable them as they are verified stable.
+## Versions
 
-## Install
+- **v1/** - patches against old decompile (94.8% bytecode match). All 20 features implemented.
+- **v2/** - patches against new decompile (97.2% bytecode match). Porting in progress.
 
-1. Download `OptiZomb-Lite-Installer.jar` from [Releases](https://github.com/jaidaken/optizomb/releases)
-2. Run: `java -jar OptiZomb-Lite-Installer.jar`
-3. The installer auto-detects your PZ install, or browse manually
-4. Click **Install**
+## v2 Build
 
-To uninstall, run the installer again and click **Uninstall**.
+```
+bash v2/scripts/apply-patches.sh
+bash v2/scripts/build-minimal.sh
+bash v2/scripts/build-installer.sh
+```
 
-## What It Does
+## v2 Testing
 
-**Enabled by default:**
-- GPU pipeline stall removal (glGetError bypass) -- **glfix**
+```
+bash scripts/setup-runtime.sh     # one-time: copy game files
+bash v2/scripts/launch.sh         # run modded game
+```
 
-**Disabled by default (being overhauled):**
-- GL state caching (shader bind, VBO/EBO, camera)
-- Bone matrix TBO (per-zombie uniform upload → single GPU buffer)
-- Render flag bitmasks (cached instanceof checks)
-- Batch texture merging (fewer draw call breaks)
-- Floor tile instancing (GPU instanced rendering)
-- Floor FBO caching (skip unchanged frames)
-- Blood splat optimization (offscreen cull + color cache)
-- Shadow LOD + deferred rendering
-- Item container indexing (HashSet dedup, type index)
-- Scene cull + distance-based LOD
-- Bone LOD for distant zombies
-- Cutaway result caching
-- Fog row skip
-- Separation + AI throttling
+Check `userdata/Logs/*_DebugLog.txt` for `[ZombPerf]` and `[GPUPerf]` lines (debug mode).
 
 ## Configuration
 
-Edit `optizomb.properties` in your PZ directory to toggle individual optimizations. Most are disabled by default during the stability overhaul -- enable them at your own risk.
+Edit `optizomb.properties` in your PZ directory. See `config/optizomb.properties.default` for all flags.
 
 ## Requirements
 
-- Project Zomboid (Steam)
-- Java 17+ (PZ ships its own JRE, or use any system JDK)
-
-## Documentation
-
-See [`docs/`](docs/) for optimization details, architecture, and safety audit.
+- Project Zomboid Build 41 (Steam)
+- Java 17+ (PZ ships its own JRE)

@@ -1,0 +1,67 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/core/skinnedmodel/model/Model.java	2026-03-28 15:50:16.966197522 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/core/skinnedmodel/model/Model.java	2026-03-28 16:01:40.796769116 +0000
+@@ -29,6 +29,7 @@
+ import zombie.iso.IsoLightSource;
+ import zombie.iso.Vector3;
+ import zombie.iso.sprite.SkyBox;
++import zombie.optizomb.OptiZombGLFix;
+ import zombie.scripting.objects.ModelAttachment;
+ import zombie.util.Lambda;
+ import zombie.util.StringUtils;
+@@ -438,55 +439,7 @@
+                             vehicleModelInstance = (VehicleModelInstance)Type.tryCastTo(modelInstance.parent, VehicleModelInstance.class);
+                         }
+ 
+-                        shader.setTexture(vehicleModelInstance.tex, "Texture0", 0);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureRust, "TextureRust", 1);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureMask, "TextureMask", 2);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureLights, "TextureLights", 3);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage1Overlay, "TextureDamage1Overlay", 4);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage1Shell, "TextureDamage1Shell", 5);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage2Overlay, "TextureDamage2Overlay", 6);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-                        shader.setTexture(vehicleModelInstance.textureDamage2Shell, "TextureDamage2Shell", 7);
+-                        GL11.glTexEnvi(8960, 8704, 7681);
+-
+-                        try {
+-                            if (Core.getInstance().getPerfReflectionsOnLoad()) {
+-                                shader.setTexture((Texture)SkyBox.getInstance().getTextureCurrent(), "TextureReflectionA", 8);
+-                                GL11.glTexEnvi(8960, 8704, 7681);
+-                                GL11.glGetError();
+-                            }
+-                        } catch (Throwable throwable1) {
+-                            Throwable throwable0 = throwable1;
+-                        }
+-
+-                        try {
+-                            if (Core.getInstance().getPerfReflectionsOnLoad()) {
+-                                shader.setTexture((Texture)SkyBox.getInstance().getTexturePrev(), "TextureReflectionB", 9);
+-                                GL11.glTexEnvi(8960, 8704, 7681);
+-                                GL11.glGetError();
+-                            }
+-                        } catch (Throwable throwable3) {
+-                            Throwable throwable2 = throwable3;
+-                        }
+-
+-                        shader.setReflectionParam(SkyBox.getInstance().getTextureShift(), vehicleModelInstance.refWindows, vehicleModelInstance.refBody);
+-                        shader.setTextureUninstall1(vehicleModelInstance.textureUninstall1);
+-                        shader.setTextureUninstall2(vehicleModelInstance.textureUninstall2);
+-                        shader.setTextureLightsEnables1(vehicleModelInstance.textureLightsEnables1);
+-                        shader.setTextureLightsEnables2(vehicleModelInstance.textureLightsEnables2);
+-                        shader.setTextureDamage1Enables1(vehicleModelInstance.textureDamage1Enables1);
+-                        shader.setTextureDamage1Enables2(vehicleModelInstance.textureDamage1Enables2);
+-                        shader.setTextureDamage2Enables1(vehicleModelInstance.textureDamage2Enables1);
+-                        shader.setTextureDamage2Enables2(vehicleModelInstance.textureDamage2Enables2);
+-                        shader.setMatrixBlood1(vehicleModelInstance.matrixBlood1Enables1, vehicleModelInstance.matrixBlood1Enables2);
+-                        shader.setMatrixBlood2(vehicleModelInstance.matrixBlood2Enables1, vehicleModelInstance.matrixBlood2Enables2);
+-                        shader.setTextureRustA(vehicleModelInstance.textureRustA);
++                        OptiZombGLFix.setupVehicleTextures(shader, vehicleModelInstance);
+                         shader.setTexturePainColor(vehicleModelInstance.painColor, modelSlotRenderData.alpha);
+                         if (this.bStatic) {
+                             shader.setTransformMatrix((Matrix4f)IDENTITY, false);

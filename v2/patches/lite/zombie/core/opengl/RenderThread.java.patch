@@ -1,0 +1,19 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/core/opengl/RenderThread.java	2026-03-28 15:50:16.943256961 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/core/opengl/RenderThread.java	2026-03-28 16:04:56.970920462 +0000
+@@ -20,6 +20,7 @@
+ import zombie.core.textures.TextureID;
+ import zombie.debug.DebugLog;
+ import zombie.debug.DebugOptions;
++import zombie.optizomb.OptiZombGLFix;
+ import zombie.input.GameKeyboard;
+ import zombie.input.Mouse;
+ import zombie.network.GameServer;
+@@ -318,7 +319,7 @@
+     public static void logGLException(OpenGLException openGLException, boolean boolean0) {
+         DebugLog.General.error("OpenGLException thrown: " + openGLException.getMessage());
+ 
+-        for (int int0 = GL11.glGetError(); int0 != 0; int0 = GL11.glGetError()) {
++        for (int int0 = OptiZombGLFix.GL_FIX ? 0 : GL11.glGetError(); int0 != 0; int0 = GL11.glGetError()) {
+             String string = Util.translateGLErrorString(int0);
+             DebugLog.General.error("  Also detected error: " + string + " ( code:" + int0 + ")");
+         }

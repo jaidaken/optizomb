@@ -1,0 +1,26 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/core/skinnedmodel/model/HeightTerrain.java	2026-03-28 15:50:16.968083980 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/core/skinnedmodel/model/HeightTerrain.java	2026-03-28 16:11:44.968143153 +0000
+@@ -1,6 +1,7 @@
+ // Decompiled with Zomboid Decompiler v0.3.0 using Vineflower.
+ package zombie.core.skinnedmodel.model;
+ 
++import zombie.optizomb.OptiZombGPUProfiler;
+ import java.nio.ByteBuffer;
+ import java.nio.ByteOrder;
+ import java.util.ArrayList;
+@@ -241,6 +242,7 @@
+     }
+ 
+     public void render() {
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_HEIGHT_TERRAIN);
+         GL11.glPushClientAttrib(-1);
+         GL11.glPushAttrib(1048575);
+         GL11.glDisable(2884);
+@@ -293,6 +295,7 @@
+         GL11.glEnable(3553);
+         GL11.glPopAttrib();
+         GL11.glPopClientAttrib();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_HEIGHT_TERRAIN);
+     }
+ 
+     private void doLighting() {

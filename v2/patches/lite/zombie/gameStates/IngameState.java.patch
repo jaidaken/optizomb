@@ -1,0 +1,335 @@
+--- /home/jaidaken/optizomb/pz-optizomb/v2/vanilla/zombie/gameStates/IngameState.java	2026-03-28 15:50:16.987663433 +0000
++++ /home/jaidaken/optizomb/pz-optizomb/v2/src/zombie/gameStates/IngameState.java	2026-03-28 16:15:48.215676954 +0000
+@@ -9,6 +9,9 @@
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import zombie.AmbientStreamManager;
++import zombie.optizomb.OptiZombConfig;
++import zombie.optizomb.OptiZombGPUProfiler;
++import zombie.optizomb.OptiZombPerfLog;
+ import zombie.DebugFileWatcher;
+ import zombie.FliesSound;
+ import zombie.GameSounds;
+@@ -506,6 +509,7 @@
+     }
+ 
+     public void UpdateStuff() {
++        long _preTimedStart = System.nanoTime();
+         GameClient.bIngame = true;
+         this.SaveDelay = this.SaveDelay + GameTime.instance.getMultiplier();
+         if (this.SaveDelay / 60.0F > 30.0F) {
+@@ -523,41 +527,60 @@
+         if (!this.Paused) {
+             ScriptManager.instance.update();
+         }
++        OptiZombPerfLog.recordUpdStuffPreTimedTime(System.nanoTime() - _preTimedStart);
+ 
+         if (!this.Paused) {
+             long long0 = System.nanoTime();
++            long _ut;
+ 
++            _ut = System.nanoTime();
+             try {
+                 WorldSoundManager.instance.update();
+             } catch (Exception exception0) {
+                 ExceptionLogger.logException(exception0);
+             }
++            OptiZombPerfLog.recordUpdStuffSoundTime(System.nanoTime() - _ut);
+ 
++            _ut = System.nanoTime();
+             try {
+                 IsoFireManager.Update();
+             } catch (Exception exception1) {
+                 ExceptionLogger.logException(exception1);
+             }
++            OptiZombPerfLog.recordUpdStuffFireTime(System.nanoTime() - _ut);
+ 
++            _ut = System.nanoTime();
+             try {
+                 RainManager.Update();
+             } catch (Exception exception2) {
+                 ExceptionLogger.logException(exception2);
+             }
++            OptiZombPerfLog.recordUpdStuffRainTime(System.nanoTime() - _ut);
+ 
++            _ut = System.nanoTime();
+             Meta.instance.update();
++            OptiZombPerfLog.recordUpdStuffMetaTime(System.nanoTime() - _ut);
+ 
+             try {
++                _ut = System.nanoTime();
+                 VirtualZombieManager.instance.update();
++                OptiZombPerfLog.recordUpdStuffVirtualZombTime(System.nanoTime() - _ut);
++                _ut = System.nanoTime();
+                 MapCollisionData.instance.updateMain();
++                OptiZombPerfLog.recordUpdStuffMapCollTime(System.nanoTime() - _ut);
++                _ut = System.nanoTime();
+                 ZombiePopulationManager.instance.updateMain();
++                OptiZombPerfLog.recordUpdStuffPopTime(System.nanoTime() - _ut);
++                _ut = System.nanoTime();
+                 PolygonalMap2.instance.updateMain();
++                OptiZombPerfLog.recordUpdStuffPathfindTime(System.nanoTime() - _ut);
+             } catch (Exception exception3) {
+                 ExceptionLogger.logException(exception3);
+             } catch (Error error) {
+                 error.printStackTrace();
+             }
+ 
++            _ut = System.nanoTime();
+             try {
+                 LootRespawn.update();
+             } catch (Exception exception4) {
+@@ -596,6 +619,7 @@
+ 
+             SearchMode.getInstance().update();
+             RenderSettings.getInstance().update();
++            OptiZombPerfLog.recordUpdStuffMiscTime(System.nanoTime() - _ut);
+             long long1 = System.nanoTime();
+         }
+     }
+@@ -945,6 +969,8 @@
+     }
+ 
+     private void renderFrameTextInternal(int int1) {
++        long _rtcStart = System.nanoTime();
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_WORLD_TEXT);
+         IndieGL.disableAlphaTest();
+         IndieGL.glDisable(2929);
+         ArrayList<UIElement> arrayList = UIManager.getUI();
+@@ -966,12 +992,20 @@
+         IsoMarkers.instance.render();
+         TextDrawObject.RenderBatch((int)int1);
+         ChatElement.RenderBatch((int)int1);
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_WORLD_TEXT);
++        OptiZombPerfLog.recordRenTextContentTime(System.nanoTime() - _rtcStart);
+ 
++        long _eftStart = System.nanoTime();
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
+         try {
+             Core.getInstance().EndFrameText((int)int1);
+         } catch (Exception exception1) {
+             Exception exception0 = exception1;
+         }
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
++        long _eftElapsed = System.nanoTime() - _eftStart;
++        OptiZombPerfLog.recordCoreEndFrameTime(_eftElapsed);
++        OptiZombPerfLog.recordEndFrameTextTime(_eftElapsed);
+     }
+ 
+     public void renderframe(int int0) {
+@@ -990,26 +1024,50 @@
+             actionProgressBar.update((int)int0);
+         }
+ 
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
+         IndieGL.disableAlphaTest();
+         IndieGL.glDisable(2929);
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
++        long _postRenStart = System.nanoTime();
+         if (IsoPlayer.getInstance() != null && !IsoPlayer.getInstance().isAsleep() || UIManager.getFadeAlpha((double)int0) < 1.0F) {
++            long _moStart = System.nanoTime();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
+             ModelOutlines.instance.startFrameMain((int)int0);
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
++            long _wrStart = System.nanoTime();
+             IsoWorld.instance.render();
++            long _wrElapsed = System.nanoTime() - _wrStart;
++            OptiZombPerfLog.recordIsoWorldRenderTime(_wrElapsed);
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
+             ModelOutlines.instance.endFrameMain((int)int0);
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_MODEL_OUTLINES);
++            OptiZombPerfLog.recordModelOutlinesTime(System.nanoTime() - _moStart - _wrElapsed);
++            _postRenStart = System.nanoTime();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_POST_RENDER);
+             RenderSettings.getInstance().legacyPostRender((int)int0);
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_POST_RENDER);
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_LUA_RENDER);
+             LuaEventManager.triggerEvent("OnPostRender");
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_LUA_RENDER);
+         }
+ 
+         LineDrawer.clear();
+         if (Core.bDebug && GameKeyboard.isKeyPressed(Core.getInstance().getKey("ToggleAnimationText"))) {
+             DebugOptions.instance.Animation.Debug.setValue(!DebugOptions.instance.Animation.Debug.getValue());
+         }
++        OptiZombPerfLog.recordRenFramePostRenderTime(System.nanoTime() - _postRenStart);
+ 
++        long _efStart = System.nanoTime();
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
+         try {
+             Core.getInstance().EndFrame((int)int0);
+         } catch (Exception exception1) {
+             Exception exception0 = exception1;
+         }
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
++        long _efElapsed = System.nanoTime() - _efStart;
++        OptiZombPerfLog.recordCoreEndFrameTime(_efElapsed);
++        OptiZombPerfLog.recordEndFrameMainTime(_efElapsed);
+     }
+ 
+     public void renderframeui() {
+@@ -1017,10 +1075,26 @@
+     }
+ 
+     private void renderFrameUI() {
+-        if (Core.getInstance().StartFrameUI()) {
++        long _sfuiStart = System.nanoTime();
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_START_FRAME_UI);
++        boolean _sfuiResult = Core.getInstance().StartFrameUI();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_START_FRAME_UI);
++        OptiZombPerfLog.recordStartFrameUITime(System.nanoTime() - _sfuiStart);
++        if (_sfuiResult) {
++            if (OptiZombConfig.DIAGNOSTICS) OptiZombPerfLog.recordUIRenderFrame();
++            long _preUIMgrStart = System.nanoTime();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_PRE_UI);
+             TextManager.instance.DrawTextFromGameWorld();
+             SkyBox.getInstance().draw();
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_PRE_UI);
++            OptiZombPerfLog.recordRenUIPreUIMgrTime(System.nanoTime() - _preUIMgrStart);
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_UI);
++            long _uimStart = System.nanoTime();
+             UIManager.render();
++            OptiZombPerfLog.recordUIManagerRenderTime(System.nanoTime() - _uimStart);
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_UI);
++            long _ruMiscStart = System.nanoTime();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_UI_MISC);
+             ZomboidRadio.getInstance().render();
+             if (Core.bDebug && IsoPlayer.getInstance() != null && IsoPlayer.getInstance().isGhostMode()) {
+                 IsoWorld.instance.CurrentCell.ChunkMap[0].drawDebugChunkMap();
+@@ -1082,6 +1156,9 @@
+ 
+             ActiveMods.renderUI();
+             JoypadManager.instance.renderUI();
++            OptiZombPerfLog.recordRenUIMiscTime(System.nanoTime() - _ruMiscStart);
++        } else {
++            if (OptiZombConfig.DIAGNOSTICS) OptiZombPerfLog.recordUISkipFrame();
+         }
+ 
+         if (Core.bDebug && DebugOptions.instance.Animation.AnimRenderPicker.getValue() && IsoPlayer.players[0] != null) {
+@@ -1091,8 +1168,15 @@
+         if (Core.bDebug) {
+             ModelOutlines.instance.renderDebug();
+         }
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_UI_MISC);
+ 
++        long _efuiStart = System.nanoTime();
++        OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
+         Core.getInstance().EndFrameUI();
++        OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_ENDFRAME);
++        long _efuiElapsed = System.nanoTime() - _efuiStart;
++        OptiZombPerfLog.recordCoreEndFrameTime(_efuiElapsed);
++        OptiZombPerfLog.recordEndFrameUITime(_efuiElapsed);
+     }
+ 
+     @Override
+@@ -1111,16 +1195,26 @@
+             } else {
+                 IsoPlayer.setInstance(IsoPlayer.players[int0]);
+                 IsoCamera.CamCharacter = IsoPlayer.players[int0];
++                long _sfStart = System.nanoTime();
++                OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_START_FRAME);
+                 Core.getInstance().StartFrame(int0, boolean0);
++                OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_START_FRAME);
++                OptiZombPerfLog.recordStartFrameTime(System.nanoTime() - _sfStart);
+                 IsoCamera.frameState.set(int0);
+                 boolean0 = false;
+                 IsoSprite.globalOffsetX = -1.0F;
++                long _rfStart = System.nanoTime();
+                 this.renderframe(int0);
++                OptiZombPerfLog.recordRenderFrameTime(System.nanoTime() - _rfStart);
+             }
+         }
+ 
+         if (DebugOptions.instance.OffscreenBuffer.Render.getValue()) {
++            long _osStart = System.nanoTime();
++            OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_OFFSCREEN);
+             Core.getInstance().RenderOffScreenBuffer();
++            OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_OFFSCREEN);
++            OptiZombPerfLog.recordOffscreenBufferTime(System.nanoTime() - _osStart);
+         }
+ 
+         for (int int1 = 0; int1 < IsoPlayer.numPlayers; int1++) {
+@@ -1129,13 +1223,23 @@
+                 IsoPlayer.setInstance(IsoPlayer.players[int1]);
+                 IsoCamera.CamCharacter = IsoPlayer.players[int1];
+                 IsoCamera.frameState.set(int1);
++                long _sftStart = System.nanoTime();
++                OptiZombGPUProfiler.beginPhase(OptiZombGPUProfiler.PHASE_START_FRAME_TEXT);
+                 Core.getInstance().StartFrameText(int1);
++                OptiZombGPUProfiler.endPhase(OptiZombGPUProfiler.PHASE_START_FRAME_TEXT);
++                OptiZombPerfLog.recordStartFrameTextTime(System.nanoTime() - _sftStart);
++                long _rtStart = System.nanoTime();
+                 this.renderframetext(int1);
++                OptiZombPerfLog.recordRenderFrameTextTime(System.nanoTime() - _rtStart);
+             }
+         }
+ 
++        long _resizeStart = System.nanoTime();
+         UIManager.resize();
++        OptiZombPerfLog.recordUIResizeTime(System.nanoTime() - _resizeStart);
++        long _ruiStart = System.nanoTime();
+         this.renderframeui();
++        OptiZombPerfLog.recordRenderFrameUITime(System.nanoTime() - _ruiStart);
+     }
+ 
+     @Override
+@@ -1329,6 +1433,7 @@
+ 
+                 if (!this.Paused || GameClient.bClient) {
+                     try {
++                        long _chunkStart = System.nanoTime();
+                         if (IsoCamera.CamCharacter != null && IsoWorld.instance.bDoChunkMapUpdate) {
+                             for (int int2 = 0; int2 < IsoPlayer.numPlayers; int2++) {
+                                 if (IsoPlayer.players[int2] == null) {
+@@ -1344,19 +1449,28 @@
+                                 }
+                             }
+                         }
++                        OptiZombPerfLog.recordUpdInternalChunkMapTime(System.nanoTime() - _chunkStart);
+ 
+                         if (Core.bDebug) {
+                             this.debugTimes.add(System.nanoTime());
+                         }
+ 
++                        long _worldUpdStart = System.nanoTime();
+                         IsoWorld.instance.update();
++                        OptiZombPerfLog.recordWorldUpdateTime(System.nanoTime() - _worldUpdStart);
+                         if (Core.bDebug) {
+                             this.debugTimes.add(System.nanoTime());
+                         }
+ 
++                        long _radioStart = System.nanoTime();
+                         ZomboidRadio.getInstance().update();
++                        OptiZombPerfLog.recordRadioUpdateTime(System.nanoTime() - _radioStart);
++                        long _updStuffStart = System.nanoTime();
+                         this.UpdateStuff();
++                        OptiZombPerfLog.recordUpdateStuffTime(System.nanoTime() - _updStuffStart);
++                        long _luaTickStart = System.nanoTime();
+                         LuaEventManager.triggerEvent("OnTick", (double)this.numberTicks);
++                        OptiZombPerfLog.recordLuaOnTickTime(System.nanoTime() - _luaTickStart);
+                         this.numberTicks = Math.max((long)(this.numberTicks + 1L), (long)0L);
+                     } catch (Exception exception1) {
+                         ExceptionLogger.logException(exception1);
+@@ -1422,7 +1536,9 @@
+             }
+ 
+             if (!GameServer.bServer || ServerGUI.isCreated()) {
++                long _mmStart = System.nanoTime();
+                 ModelManager.instance.update();
++                OptiZombPerfLog.recordModelMgrUpdateTime(System.nanoTime() - _mmStart);
+             }
+ 
+             if (Core.bDebug && FPSGraph.instance != null) {
+@@ -1430,10 +1546,12 @@
+                 FPSGraph.instance.update();
+             }
+ 
++            long _postTickStart = System.nanoTime();
+             if (GameClient.bClient || GameServer.bServer) {
+                 ItemTransactionManager.update();
+                 MPStatistics.Update();
+             }
++            OptiZombPerfLog.recordUpdInternalPostTickTime(System.nanoTime() - _postTickStart);
+ 
+             return GameStateMachine.StateAction.Remain;
+         }
